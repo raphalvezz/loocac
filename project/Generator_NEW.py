@@ -1,87 +1,42 @@
 #!/usr/bin/env python3
 """
-Generator - Gêmeo Digital Econômico (v5 - Artigo Table-Driven)
-Gera datasets focados EXATAMENTE nos cenários da tabela do artigo.
+Generator - Gêmeo Digital Econômico (v6 - bandido contextual)
+Gera os datasets de SL e RL a partir dos cenários da tabela do artigo.
+
+A economia (demanda, churn, ótimo de preço) fica em simulador.py, para que os
+notebooks e o avaliar_politicas.py usem exatamente o mesmo mundo simulado.
+
+Mudanças da v6:
+  - Lucro com ótimo interior em cada faixa (elasticidade relativa ao preço médio).
+  - Elasticidade varia com Região/Plataforma, então o preço ótimo depende do contexto.
+  - Ação salva normalizada por Tier em [-1, 1] (log min-max), alinhada ao tanh do ator.
+  - Linhas embaralhadas: o split 80/20 dos notebooks deixa de separar por cenário.
+  - Semente fixa e manifesto com hash dos dados (reprodutibilidade).
 """
 
-import numpy as np
-import pandas as pd
+import hashlib
 import json
-import joblib
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
-import d3rlpy
-from d3rlpy.dataset import ReplayBuffer, FIFOBuffer, Episode
-from tqdm import tqdm
 import os
 
+import joblib
+import numpy as np
+import pandas as pd
+from d3rlpy.dataset import ReplayBuffer, FIFOBuffer, Episode
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from tqdm import tqdm
+
+import simulador as sim
+
 print("="*80)
-print("GENERATOR (v5 - Artigo) - Focado em Cenários de Tabela")
+print("GENERATOR (v6) - Bandido contextual sobre os cenários da tabela")
 print("="*80)
+
+N_POR_CENARIO = 5000
+rng = np.random.default_rng(sim.SEED)
 
 # ============================================================================
-# 1. DEFINIÇÃO DOS CENÁRIOS DO ARTIGO (Sua Tabela)
+# 1. Cenários (tabela do artigo, opcionalmente restritos pelo painel)
 # ============================================================================
-# Aqui você define EXATAMENTE o que quer que a IA aprenda.
-# Cada entrada é um "mundo" que será simulado.
-
-
-CENARIOS_ARTIGO = [
-    # --- LOW TICKET (CPA alvo ~25% a 30% do preço médio) ---
-    
-    # 1. Micro-ticket (10-20), Budget Baixo
-    # Preço Médio: $15 -> CPA Ideal: $5
-    {'Tier': 'Low Ticket', 'Price_Min': 10.0, 'Price_Max': 20.0, 'Budget': 100.0, 'CPA_Target': 5.0},
-    
-    # 2. Mid-Low (50-100), Budget Baixo
-    # Preço Médio: $75 -> CPA Ideal: $20 (Não $5)
-    {'Tier': 'Low Ticket', 'Price_Min': 50.0, 'Price_Max': 100.0, 'Budget': 200.0, 'CPA_Target': 20.0},
-   
-    # 3. Low-Mid (20-50), Budget Médio
-    # Preço Médio: $35 -> CPA Ideal: $10
-    {'Tier': 'Low Ticket', 'Price_Min': 20.0, 'Price_Max': 50.0, 'Budget': 1000.0, 'CPA_Target': 10.0},
-    
-    # 4. Mid-Low (50-100), Budget Médio
-    # Preço Médio: $75 -> CPA Ideal: $22
-    {'Tier': 'Low Ticket', 'Price_Min': 50.0, 'Price_Max': 100.0, 'Budget': 1000.0, 'CPA_Target': 22.0},
-   
-    # 5. Low-Mid (20-50), Budget Alto
-    # Escala gera ineficiência, CPA sobe um pouco -> $12
-    {'Tier': 'Low Ticket', 'Price_Min': 20.0, 'Price_Max': 50.0, 'Budget': 10000.0, 'CPA_Target': 12.0},
-    
-    # 6. Mid-Low (50-100), Budget Alto
-    # CPA ajustado -> $25
-    {'Tier': 'Low Ticket', 'Price_Min': 50.0, 'Price_Max': 100.0, 'Budget': 10000.0, 'CPA_Target': 25.0},
-   
-    # --- HIGH TICKET (CPA alvo ~15% a 25% do preço médio) ---
-    # High Ticket tem margem maior, mas volume menor. O CPA absoluto é alto.
-
-    # 7. High Entry (500-1000), Budget Baixo
-    # Preço Médio: $750 -> CPA Ideal: $150 (Ok, estava certo)
-    {'Tier': 'High Ticket', 'Price_Min': 500.0, 'Price_Max': 1000.0, 'Budget': 2000.0, 'CPA_Target': 150.0},
-
-    # 8. High Mid (1000-2000), Budget Médio
-    # Preço Médio: $1500 -> CPA Ideal: $350 (Não $150)
-    {'Tier': 'High Ticket', 'Price_Min': 1000.0, 'Price_Max': 2000.0, 'Budget': 5000.0, 'CPA_Target': 350.0},
-
-    # 9. High Premium (2000-5000), Budget Médio
-    # Preço Médio: $3500 -> CPA Ideal: $800
-    {'Tier': 'High Ticket', 'Price_Min': 2000.0, 'Price_Max': 5000.0, 'Budget': 10000.0, 'CPA_Target': 800.0},
-
-    # 10. High Premium (2000-5000), Budget Alto
-    # Escala agressiva -> CPA $900
-    {'Tier': 'High Ticket', 'Price_Min': 2000.0, 'Price_Max': 5000.0, 'Budget': 50000.0, 'CPA_Target': 900.0},
-    
-    # 11. Ultra High (5000-10000), Budget Alto
-    # Preço Médio: $7500 -> CPA Ideal: $1800
-    {'Tier': 'High Ticket', 'Price_Min': 5000.0, 'Price_Max': 10000.0, 'Budget': 100000.0, 'CPA_Target': 1800.0},
-
-    # 12. Enterprise/Mastermind (10000-25000), Budget Muito Alto
-    # Preço Médio: $17500 -> CPA Ideal: $4000 (Venda complexa)
-    {'Tier': 'High Ticket', 'Price_Min': 10000.0, 'Price_Max': 25000.0, 'Budget': 200000.0, 'CPA_Target': 4000.0}
-]
-    # Adicione mais linhas conforme sua tabela do artigo...
-
-
 def aplicar_config_mercado(cenarios, path="config_market.json"):
     """Restringe os cenários às faixas salvas pelo painel "Gêmeo Digital" (/configure_market).
 
@@ -109,232 +64,137 @@ def aplicar_config_mercado(cenarios, path="config_market.json"):
     print(f"Config de mercado '{path}' aplicada: {len(ajustados)}/{len(cenarios)} cenários mantidos.")
     return ajustados
 
-CENARIOS_ARTIGO = aplicar_config_mercado(CENARIOS_ARTIGO)
-
-# Configurações fixas para o resto (não variam na tabela)
-REGIOES = ['North America', 'Europe', 'Asia', 'South America']
-PLATAFORMAS = ['Instagram', 'Facebook', 'LinkedIn']
+CENARIOS = aplicar_config_mercado(sim.CENARIOS_ARTIGO)
+FAIXAS_TIER = sim.faixas_tier(CENARIOS)
 
 # ============================================================================
-# 2. Funções Econômicas (Ajustadas para os Cenários)
+# 2. Gerar amostras
 # ============================================================================
-
-def get_scenario_data():
-    """Escolhe um cenário da tabela aleatoriamente para gerar um dado."""
-    cenario = np.random.choice(CENARIOS_ARTIGO)
-    return cenario
-
-def generate_price_cpa_from_scenario(cenario):
-    """Gera preço dentro da faixa exata do cenário."""
-    # Preço aleatório DENTRO da faixa específica (ex: 10 a 20)
-    price = np.random.uniform(cenario['Price_Min'], cenario['Price_Max'])
-    
-    # CPA com leve ruído em torno do alvo
-    cpa = cenario['CPA_Target'] * np.random.uniform(0.9, 1.1)
-    
-    return price, cpa
-
-def calculate_demand_scenario(estado, preco, cenario):
-    """Calcula demanda calibrada para o cenário específico."""
-    # Preço médio da faixa (para referência)
-    a0 = (cenario['Price_Min'] + cenario['Price_Max']) / 2
-    
-    # Demanda base (c0) ajustada pelo orçamento
-    # Se orçamento é 100, c0 é menor do que se for 1000
-    orcamento_factor = np.log1p(cenario['Budget']) / np.log1p(1000) # Normalizado em 1000
-    c0 = 100.0 * orcamento_factor 
-    
-    beta = 0.05 # Sensibilidade padrão
-    
-    # Curva: Se preço > média, demanda cai.
-    if preco > a0:
-        conversoes = c0 * np.exp(-beta * (preco - a0))
-    else:
-        conversoes = c0 # Demanda máxima no preço baixo
-        
-    return max(0, conversoes)
-
-class Transition:
-    def __init__(self, observation, action, reward, terminal):
-        self.observation = observation
-        self.action = action
-        self.reward = reward
-        self.terminal = terminal
-
-# ============================================================================
-# 3. Gerar Datasets (Preenchendo com dados dos cenários)
-# ============================================================================
-
-def generate_datasets(num_samples_per_scenario=5000):
-    """Gera dados balanceados para cada cenário da tabela."""
-    
-    data_sl = []
-    transitions_rl = []
-    transitions_sub = []
-    
-    total_samples = num_samples_per_scenario * len(CENARIOS_ARTIGO)
-    print(f"Gerando {total_samples} amostras ({num_samples_per_scenario} por cenário)...")
-    
-    for cenario in tqdm(CENARIOS_ARTIGO):
-        for _ in range(num_samples_per_scenario):
-            # --- 1. Estado Base ---
-            estado = {
-                'Regiao': np.random.choice(REGIOES),
-                'Plataforma': np.random.choice(PLATAFORMAS),
+def generate_datasets():
+    linhas = []
+    print(f"Gerando {N_POR_CENARIO * len(CENARIOS)} amostras ({N_POR_CENARIO} por cenário)...")
+    for idx, cenario in enumerate(tqdm(CENARIOS)):
+        for _ in range(N_POR_CENARIO):
+            regiao = rng.choice(sim.REGIOES)
+            plataforma = rng.choice(sim.PLATAFORMAS)
+            # Política de coleta: preço uniforme dentro da faixa do cenário
+            preco = rng.uniform(cenario['Price_Min'], cenario['Price_Max'])
+            linhas.append({
+                'Cenario': idx,
+                'Regiao': regiao,
+                'Plataforma': plataforma,
                 'Tier': cenario['Tier'],
-                'Orcamento': cenario['Budget'], # ORÇAMENTO EXATO DA TABELA
-                'Idade': '25-34', 'Genero': 'Female', 'Conteudo': 'Video', # Fixos ou variados
+                'Orcamento': cenario['Budget'],
+                'Idade': '25-34', 'Genero': 'Female', 'Conteudo': 'Video',
                 'Tipo_Produto': 'InfoProduto', 'Modelo_Cobranca': 'Venda Unica', 'Complexidade_Oferta': 'Media',
-                # Features memória (mock)
-                'dias_desde_ultima_interacao': 30, 'clv_estimate_percentile': 0.5,
-                'avg_price_offered_segment_90d': cenario['Price_Min'], 'price_volatility_30d': 1.0
-            }
-            
-            # --- 2. Ação e Recompensa ---
-            preco, cpa = generate_price_cpa_from_scenario(cenario)
-            
-            # SL e RL Fixo (Lucro Imediato)
-            conversoes = calculate_demand_scenario(estado, preco, cenario)
-            lucro = max(0, conversoes * (preco - cpa))
-            
-            # RL Assinatura (LTV)
-            churn = 0.1 + (preco / 1000) # Simplificado
-            ltv = max(0, (preco / churn) - cpa)
+                **sim.memoria_assinatura(cenario),
+                'Preco_Amostra': preco,
+                'Lucro_Real': sim.amostrar_lucro(preco, cenario, regiao, plataforma, 'venda_unica', rng),
+                'LTV_Real': sim.amostrar_lucro(preco, cenario, regiao, plataforma, 'assinatura', rng),
+            })
+    df = pd.DataFrame(linhas)
+    # Embaralha: sem isso, o split 80/20 sequencial dos notebooks testa só os últimos cenários
+    return df.sample(frac=1.0, random_state=sim.SEED).reset_index(drop=True)
 
-            # --- 3. Salvar nas Listas ---
-            
-            # SL
-            row = estado.copy()
-            row['Preco_Amostra'] = preco
-            row['Lucro_Real'] = lucro
-            data_sl.append(row)
-            
-            # RL Fixo
-            transitions_rl.append(Transition(
-                observation=estado, action=preco, reward=lucro, terminal=0.0
-            ))
-            
-            # RL Assinatura
-            transitions_sub.append(Transition(
-                observation=estado, action=preco, reward=ltv, terminal=0.0
-            ))
-            
-    return pd.DataFrame(data_sl), transitions_rl, transitions_sub
-
-# Executar Geração
-df_sl, trans_rl, trans_sub = generate_datasets()
+df = generate_datasets()
 
 # ============================================================================
-# 4. Processamento e Salvamento (Padrão do Projeto)
+# 3. Processamento e salvamento
 # ============================================================================
-
 print("Salvando artefatos...")
 
-# Definir colunas para OHE
-categorical_features = ['Regiao', 'Plataforma', 'Tier', 'Idade', 'Genero', 'Conteudo', 
-                       'Tipo_Produto', 'Modelo_Cobranca', 'Complexidade_Oferta']
+categorical_features = ['Regiao', 'Plataforma', 'Tier', 'Idade', 'Genero', 'Conteudo',
+                        'Tipo_Produto', 'Modelo_Cobranca', 'Complexidade_Oferta']
 numeric_features_base = ['Orcamento']
-numeric_features_memoria = ['dias_desde_ultima_interacao', 'clv_estimate_percentile', 
-                           'avg_price_offered_segment_90d', 'price_volatility_30d']
+numeric_features_memoria = ['dias_desde_ultima_interacao', 'clv_estimate_percentile',
+                            'avg_price_offered_segment_90d', 'price_volatility_30d']
 
-# --- 4.1 SL ---
-df_sl_clean = df_sl.drop(columns=numeric_features_memoria, errors='ignore')
-df_sl_clean.to_csv('sl_dataset_combined.csv', index=False)
+# --- 3.1 SL ---
+# LTV_Real fica no CSV para o baseline de bandido da assinatura (avaliar_politicas.py)
+df.drop(columns=numeric_features_memoria).to_csv('sl_dataset_combined.csv', index=False)
 
-# Scalers SL
-ohe = OneHotEncoder(handle_unknown='ignore', sparse_output=False).fit(df_sl[categorical_features])
-scaler_state = StandardScaler().fit(df_sl[numeric_features_base])
-scaler_price = StandardScaler().fit(df_sl[['Preco_Amostra']])
-scaler_profit = StandardScaler().fit(df_sl[['Lucro_Real']])
+ohe = OneHotEncoder(handle_unknown='ignore', sparse_output=False).fit(df[categorical_features])
+scaler_state = StandardScaler().fit(df[numeric_features_base])
+scaler_price = StandardScaler().fit(df[['Preco_Amostra']])
+scaler_profit = StandardScaler().fit(df[['Lucro_Real']])
 
 joblib.dump(ohe, 'sl_ohe_encoder.joblib') # Mesmo nome usado pelo SL_FINAL e pela API
 joblib.dump(scaler_state, 'sl_scaler_estado.joblib')
 joblib.dump(scaler_price, 'sl_scaler_preco.joblib')
 joblib.dump(scaler_profit, 'sl_scaler_lucro.joblib')
 
-# --- 4.2 RL Fixo ---
-# Reaproveita os scalers do SL para consistência (ou cria novos se preferir)
-# Vamos criar novos para garantir formato correto (d3rlpy)
-scaler_acao_rl = StandardScaler().fit(np.array([t.action for t in trans_rl]).reshape(-1, 1))
-scaler_reward_rl = StandardScaler().fit(np.array([t.reward for t in trans_rl]).reshape(-1, 1))
-
-# Processa Observações
-df_obs = pd.DataFrame([t.observation for t in trans_rl])
-obs_processed = np.concatenate([
-    ohe.transform(df_obs[categorical_features]),
-    scaler_state.transform(df_obs[numeric_features_base])
+# --- 3.2 Estado e ação (comuns aos dois agentes) ---
+obs_base = np.concatenate([
+    ohe.transform(df[categorical_features]),
+    scaler_state.transform(df[numeric_features_base]),
 ], axis=1)
-actions_processed = scaler_acao_rl.transform(np.array([t.action for t in trans_rl]).reshape(-1, 1))
-rewards_processed = scaler_reward_rl.transform(np.array([t.reward for t in trans_rl]).reshape(-1, 1)).flatten()
+acoes = np.array([
+    sim.preco_para_acao(p, t, FAIXAS_TIER) for p, t in zip(df['Preco_Amostra'], df['Tier'])
+]).reshape(-1, 1)
+assert np.all(np.abs(acoes) <= 1 + 1e-9), "ação fora de [-1, 1]"
 
-# Salva Buffer RL Fixo
-episode_rl = Episode(
-    obs_processed.astype(np.float32),
-    actions_processed.astype(np.float32),
-    rewards_processed.reshape(-1, 1).astype(np.float32),
-    False # terminated
-)
-buffer_rl = ReplayBuffer(FIFOBuffer(limit=len(trans_rl)), episodes=[episode_rl])
-with open('rl_offline_buffer.h5', 'w+b') as f:
-    buffer_rl.dump(f)
+def salvar_buffer(path, obs, recompensas):
+    # Um único episódio terminal; com gamma=0 nos notebooks, cada transição é
+    # uma decisão independente (bandido contextual).
+    episodio = Episode(
+        obs.astype(np.float32),
+        acoes.astype(np.float32),
+        recompensas.reshape(-1, 1).astype(np.float32),
+        True,
+    )
+    buffer = ReplayBuffer(FIFOBuffer(limit=len(obs)), episodes=[episodio])
+    with open(path, 'w+b') as f:
+        buffer.dump(f)
 
-# Salva Scalers RL
+# --- 3.3 RL Venda Única ---
+scaler_reward_rl = StandardScaler().fit(df[['Lucro_Real']])
+salvar_buffer('rl_offline_buffer.h5', obs_base, scaler_reward_rl.transform(df[['Lucro_Real']]).ravel())
+
 joblib.dump(ohe, 'ohe_encoder.joblib') # Compartilhado
 joblib.dump(scaler_state, 'scaler_estado.joblib') # Compartilhado
-joblib.dump(scaler_acao_rl, 'scaler_acao.joblib')
 joblib.dump(scaler_reward_rl, 'scaler_recompensa.joblib')
 
-# Salva Metadados
 cols_base = list(ohe.get_feature_names_out()) + numeric_features_base
 with open('colunas_estado_base.json', 'w') as f:
     json.dump(cols_base, f)
 
-# --- 4.3 RL Assinatura ---
-# (Similar ao Fixo, mas inclui memória)
-scaler_memoria = StandardScaler().fit(df_sl[numeric_features_memoria])
-scaler_acao_sub = StandardScaler().fit(np.array([t.action for t in trans_sub]).reshape(-1, 1))
-scaler_reward_sub = StandardScaler().fit(np.array([t.reward for t in trans_sub]).reshape(-1, 1))
-
-df_obs_sub = pd.DataFrame([t.observation for t in trans_sub])
-obs_sub_processed = np.concatenate([
-    ohe.transform(df_obs_sub[categorical_features]),
-    scaler_state.transform(df_obs_sub[numeric_features_base]),
-    scaler_memoria.transform(df_obs_sub[numeric_features_memoria])
-], axis=1)
-
-actions_sub_proc = scaler_acao_sub.transform(np.array([t.action for t in trans_sub]).reshape(-1, 1))
-rewards_sub_proc = scaler_reward_sub.transform(np.array([t.reward for t in trans_sub]).reshape(-1, 1)).flatten()
-
-episode_sub = Episode(
-    obs_sub_processed.astype(np.float32),
-    actions_sub_proc.astype(np.float32),
-    rewards_sub_proc.reshape(-1, 1).astype(np.float32),
-    False
-)
-buffer_sub = ReplayBuffer(FIFOBuffer(limit=len(trans_sub)), episodes=[episode_sub])
-with open('rl_assinatura_buffer.h5', 'w+b') as f:
-    buffer_sub.dump(f)
+# --- 3.4 RL Assinatura (estado inclui memória) ---
+scaler_memoria = StandardScaler().fit(df[numeric_features_memoria])
+scaler_reward_sub = StandardScaler().fit(df[['LTV_Real']])
+obs_sub = np.concatenate([obs_base, scaler_memoria.transform(df[numeric_features_memoria])], axis=1)
+salvar_buffer('rl_assinatura_buffer.h5', obs_sub, scaler_reward_sub.transform(df[['LTV_Real']]).ravel())
 
 joblib.dump(scaler_memoria, 'scaler_assinatura_memoria.joblib')
-joblib.dump(scaler_acao_sub, 'scaler_assinatura_acao.joblib')
 joblib.dump(scaler_reward_sub, 'scaler_assinatura_recompensa.joblib')
 
 cols_sub = cols_base + numeric_features_memoria
 with open('colunas_estado_assinatura.json', 'w') as f:
     json.dump(cols_sub, f)
 
-print("\n✅ SUCESSO: Todos os buffers e scalers gerados para os cenários da tabela.")
-print(f"  Cenários processados: {len(CENARIOS_ARTIGO)}")
+# --- 3.5 Metadados para API, notebooks e avaliação ---
+with open('faixas_tier.json', 'w') as f:
+    json.dump(FAIXAS_TIER, f, indent=2)
+with open('cenarios_treino.json', 'w') as f:
+    json.dump(CENARIOS, f, indent=2)
 
-CENARIOS_ARTIGO = [
-    # Low Ticket (Faixa 10-20, Budget 100)
-    {'Tier': 'Low Ticket', 'Price_Min': 10.0, 'Price_Max': 20.0, 'Budget': 100.0, 'CPA_Target': 5.0},
-    
-    # Low Ticket (Faixa 10-20, Budget 1000)
-    {'Tier': 'Low Ticket', 'Price_Min': 10.0, 'Price_Max': 20.0, 'Budget': 1000.0, 'CPA_Target': 5.0},
+def sha256(path):
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for bloco in iter(lambda: f.read(1 << 20), b''):
+            h.update(bloco)
+    return h.hexdigest()
 
-    # High Ticket (Exemplo: Faixa 400-600, Budget 2000)
-    {'Tier': 'High Ticket', 'Price_Min': 400.0, 'Price_Max': 600.0, 'Budget': 2000.0, 'CPA_Target': 150.0},
-    
-    # Adicione mais linhas conforme sua tabela do artigo...
-]
+arquivos = ['sl_dataset_combined.csv', 'rl_offline_buffer.h5', 'rl_assinatura_buffer.h5',
+            'faixas_tier.json', 'cenarios_treino.json']
+with open('data_manifest.json', 'w') as f:
+    json.dump({
+        'gerador': 'Generator_NEW.py v6',
+        'seed': sim.SEED,
+        'amostras': len(df),
+        'amostras_por_cenario': N_POR_CENARIO,
+        'sha256': {a: sha256(a) for a in arquivos},
+    }, f, indent=2)
+
+print("\n✅ SUCESSO: buffers, scalers e metadados gerados.")
+print(f"  Cenários processados: {len(CENARIOS)}")
+print(f"  Faixas de ação por Tier: {FAIXAS_TIER}")

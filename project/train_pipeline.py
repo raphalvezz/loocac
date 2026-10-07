@@ -52,6 +52,9 @@ def run_pipeline():
         "4. Treinando RL Assinatura (LTV)"
     )
 
+    # 5. Comparar com os baselines no simulador
+    run_command(f"{sys.executable} avaliar_politicas.py", "5. Avaliando políticas vs. baselines")
+
     print("\n" + "="*60)
     print("🎉 PIPELINE CONCLUÍDO: Todos os modelos foram treinados e salvos.")
     print("="*60)

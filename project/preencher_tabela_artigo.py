@@ -6,6 +6,8 @@ import json
 import os
 import warnings
 
+import simulador as sim
+
 # Suprime avisos de versões
 warnings.filterwarnings('ignore')
 
@@ -51,11 +53,12 @@ try:
     # Scalers
     ohe = joblib.load("ohe_encoder.joblib")
     scaler_state = joblib.load("scaler_estado.joblib")
-    scaler_action = joblib.load("scaler_acao.joblib")
+    with open("faixas_tier.json") as f:
+        faixas_tier = json.load(f)  # ação [-1, 1] -> faixa do Tier (simulador.py)
     scaler_reward = joblib.load("scaler_recompensa.joblib")
     
     # Modelo Treinado
-    cql = d3rlpy.load_learnable("modelo_rl_final.pt", device="cpu")
+    cql = d3rlpy.load_learnable("modelo_rl_final.d3", device="cpu")
     
     # Metadados das colunas
     with open('colunas_estado_base.json', 'r') as f:
@@ -99,7 +102,7 @@ for linha in CENARIOS_TABELA:
     # 3. INFERÊNCIA (A Pergunta para a IA)
     # Qual o preço?
     acao_norm = cql.predict(state_vector)[0]
-    preco_real = scaler_action.inverse_transform(acao_norm.reshape(1, -1))[0][0]
+    preco_real = float(sim.acao_para_preco(acao_norm[0], linha['Tier'], faixas_tier))
     
     # Qual o lucro esperado? (Risco)
     if hasattr(cql, "predict_value"):

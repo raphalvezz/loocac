@@ -14,6 +14,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 
+import simulador as sim
+
 # --- 1. Inicialização do App FastAPI (ISSO DEVE VIR PRIMEIRO) ---
 app = FastAPI(title="LOCAC API de Precificação")
 
@@ -152,10 +154,9 @@ async def load_models():
         "sl_ohe": "sl_ohe_encoder.joblib",
         "ohe": "ohe_encoder.joblib",
         "scaler_estado": "scaler_estado.joblib",
-        "scaler_acao": "scaler_acao.joblib",
+        "faixas_tier": "faixas_tier.json",
         "scaler_recompensa": "scaler_recompensa.joblib",
         "scaler_assinatura_memoria": "scaler_assinatura_memoria.joblib",
-        "scaler_assinatura_acao": "scaler_assinatura_acao.joblib",
         "scaler_assinatura_recompensa": "scaler_assinatura_recompensa.joblib",
         "colunas_estado_base": "colunas_estado_base.json",
         "colunas_estado_assinatura": "colunas_estado_assinatura.json",
@@ -172,10 +173,11 @@ async def load_models():
         # Carrega Scalers
         models_state["ohe"] = joblib.load(artifact_paths["ohe"])
         models_state["scaler_estado"] = joblib.load(artifact_paths["scaler_estado"])
-        models_state["scaler_acao"] = joblib.load(artifact_paths["scaler_acao"])
+        # Ação do agente: [-1, 1] mapeado para a faixa do Tier (log min-max), ver simulador.py
+        with open(artifact_paths["faixas_tier"]) as f:
+            models_state["faixas_tier"] = json.load(f)
         models_state["scaler_recompensa"] = joblib.load(artifact_paths["scaler_recompensa"])
         models_state["scaler_assinatura_memoria"] = joblib.load(artifact_paths["scaler_assinatura_memoria"])
-        models_state["scaler_assinatura_acao"] = joblib.load(artifact_paths["scaler_assinatura_acao"])
         models_state["scaler_assinatura_recompensa"] = joblib.load(artifact_paths["scaler_assinatura_recompensa"])
 
         # Carrega Modelos
@@ -270,11 +272,13 @@ async def recommend_price(input_data: CampaignInput):
         
         # RL Prediction
         action_norm = models_state["cql_venda_unica"].predict(state_vector)[0]
-        preco_rl = models_state["scaler_acao"].inverse_transform(action_norm.reshape(1, -1))[0][0]
+        preco_rl = float(sim.acao_para_preco(action_norm[0], input_data.Tier, models_state["faixas_tier"]))
 
         # KBS: limita à faixa do Tier; o risco é avaliado no preço efetivamente recomendado
         preco_real, kbs_applied = apply_kbs(preco_rl, input_data.Tier)
-        action_kbs = models_state["scaler_acao"].transform([[preco_real]]).astype(np.float32)[0]
+        action_kbs = np.clip(
+            [sim.preco_para_acao(preco_real, input_data.Tier, models_state["faixas_tier"])], -1.0, 1.0
+        ).astype(np.float32)
         
         # Risco (quantis do crítico QR)
         var_5, cvar_5 = compute_risk(
@@ -305,11 +309,13 @@ async def recommend_subscription_price(input_data: CampaignInput):
         state_vector = preprocess_input(input_data, feature_type="assinatura")
         
         action_norm = models_state["cql_assinatura"].predict(state_vector)[0]
-        preco_rl = models_state["scaler_assinatura_acao"].inverse_transform(action_norm.reshape(1, -1))[0][0]
+        preco_rl = float(sim.acao_para_preco(action_norm[0], input_data.Tier, models_state["faixas_tier"]))
 
         # KBS: limita à faixa do Tier; o risco é avaliado no preço efetivamente recomendado
         preco_real, kbs_applied = apply_kbs(preco_rl, input_data.Tier)
-        action_kbs = models_state["scaler_assinatura_acao"].transform([[preco_real]]).astype(np.float32)[0]
+        action_kbs = np.clip(
+            [sim.preco_para_acao(preco_real, input_data.Tier, models_state["faixas_tier"])], -1.0, 1.0
+        ).astype(np.float32)
         
         var_5, cvar_5 = compute_risk(
             models_state["cql_assinatura"], models_state["scaler_assinatura_recompensa"], state_vector, action_kbs
