@@ -19,8 +19,11 @@ export interface CampaignSimulation {
 export interface PricingRecommendation {
   type: 'subscription' | 'fixed';
   amount: number;
-  estimatedRevenue: number;
-  roi: number;
-  coverage: number;
+  rawAmount: number;       // preço do RL antes da regra de faixa (KBS)
+  kbsApplied: boolean;
+  estimatedProfit: number; // lucro previsto pelo SL
+  roi: number;             // lucro / orçamento, em %
+  var5: number;
+  cvar5: number;
   locations: string[];
 }

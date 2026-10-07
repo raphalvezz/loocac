@@ -82,6 +82,35 @@ CENARIOS_ARTIGO = [
     # Adicione mais linhas conforme sua tabela do artigo...
 
 
+def aplicar_config_mercado(cenarios, path="config_market.json"):
+    """Restringe os cenários às faixas salvas pelo painel "Gêmeo Digital" (/configure_market).
+
+    Sem o arquivo, os cenários da tabela são usados como estão.
+    """
+    if not os.path.exists(path):
+        return cenarios
+    with open(path) as f:
+        cfg = json.load(f)
+    faixas = cfg.get("price_ranges", {})
+    budget = cfg.get("budget_range", {})
+
+    ajustados = []
+    for c in cenarios:
+        faixa = faixas.get(c['Tier'], {})
+        pmin = max(c['Price_Min'], faixa.get('min', c['Price_Min']))
+        pmax = min(c['Price_Max'], faixa.get('max', c['Price_Max']))
+        if pmin >= pmax:
+            continue  # cenário fora da faixa configurada
+        orcamento = float(np.clip(c['Budget'], budget.get('min', c['Budget']), budget.get('max', c['Budget'])))
+        ajustados.append({**c, 'Price_Min': pmin, 'Price_Max': pmax, 'Budget': orcamento})
+
+    if not ajustados:
+        raise ValueError(f"Nenhum cenário compatível com as faixas de '{path}'.")
+    print(f"Config de mercado '{path}' aplicada: {len(ajustados)}/{len(cenarios)} cenários mantidos.")
+    return ajustados
+
+CENARIOS_ARTIGO = aplicar_config_mercado(CENARIOS_ARTIGO)
+
 # Configurações fixas para o resto (não variam na tabela)
 REGIOES = ['North America', 'Europe', 'Asia', 'South America']
 PLATAFORMAS = ['Instagram', 'Facebook', 'LinkedIn']
@@ -218,7 +247,7 @@ scaler_state = StandardScaler().fit(df_sl[numeric_features_base])
 scaler_price = StandardScaler().fit(df_sl[['Preco_Amostra']])
 scaler_profit = StandardScaler().fit(df_sl[['Lucro_Real']])
 
-joblib.dump(ohe, 'sl_encoder.joblib')
+joblib.dump(ohe, 'sl_ohe_encoder.joblib') # Mesmo nome usado pelo SL_FINAL e pela API
 joblib.dump(scaler_state, 'sl_scaler_estado.joblib')
 joblib.dump(scaler_price, 'sl_scaler_preco.joblib')
 joblib.dump(scaler_profit, 'sl_scaler_lucro.joblib')
