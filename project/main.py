@@ -3,6 +3,7 @@ import time
 import json
 import joblib
 import d3rlpy
+import torch
 import numpy as np
 import pandas as pd
 import uvicorn
@@ -37,6 +38,10 @@ class CampaignInput(BaseModel):
     Idade: str
     Genero: str
     Conteudo: str
+    # Exigidos pelos encoders (ohe_encoder / sl_ohe_encoder)
+    Tipo_Produto: str = "InfoProduto"
+    Modelo_Cobranca: str = "Venda Unica"
+    Complexidade_Oferta: str = "Media"
     # Features de Assinatura opcionais
     dias_desde_ultima_interacao: float = 0.0
     clv_estimate_percentile: float = 0.0
@@ -111,14 +116,16 @@ async def load_models():
     global models_state
     
     artifact_paths = {
-        "cql_venda_unica": "modelo_rl_final.pt",
-        "cql_assinatura": "modelo_rl_assinatura.pt",
+        "cql_venda_unica": "modelo_rl_final.d3",
+        "cql_assinatura": "modelo_rl_assinatura.d3",
         "sl_profit": "sl_profit_regressor_model.joblib",
+        "sl_ohe": "sl_ohe_encoder.joblib",
         "ohe": "ohe_encoder.joblib",
         "scaler_estado": "scaler_estado.joblib",
         "scaler_acao": "scaler_acao.joblib",
         "scaler_recompensa": "scaler_recompensa.joblib",
         "scaler_assinatura_memoria": "scaler_assinatura_memoria.joblib",
+        "scaler_assinatura_acao": "scaler_assinatura_acao.joblib",
         "scaler_assinatura_recompensa": "scaler_assinatura_recompensa.joblib",
         "colunas_estado_base": "colunas_estado_base.json",
         "colunas_estado_assinatura": "colunas_estado_assinatura.json",
@@ -138,9 +145,11 @@ async def load_models():
         models_state["scaler_acao"] = joblib.load(artifact_paths["scaler_acao"])
         models_state["scaler_recompensa"] = joblib.load(artifact_paths["scaler_recompensa"])
         models_state["scaler_assinatura_memoria"] = joblib.load(artifact_paths["scaler_assinatura_memoria"])
+        models_state["scaler_assinatura_acao"] = joblib.load(artifact_paths["scaler_assinatura_acao"])
         models_state["scaler_assinatura_recompensa"] = joblib.load(artifact_paths["scaler_assinatura_recompensa"])
 
         # Carrega Modelos
+        models_state["sl_ohe"] = joblib.load(artifact_paths["sl_ohe"])
         models_state["sl_profit"] = joblib.load(artifact_paths["sl_profit"])
         models_state["cql_venda_unica"] = d3rlpy.load_learnable(artifact_paths["cql_venda_unica"], device="cpu")
         models_state["cql_assinatura"] = d3rlpy.load_learnable(artifact_paths["cql_assinatura"], device="cpu")
@@ -172,7 +181,10 @@ def preprocess_input(input_data: CampaignInput, feature_type: str) -> np.ndarray
 
     # Transformações
     categorical_cols = ohe.feature_names_in_
-    df_categ = pd.DataFrame(ohe.transform(df[categorical_cols]).toarray(), columns=ohe.get_feature_names_out())
+    categ = ohe.transform(df[categorical_cols])
+    if hasattr(categ, "toarray"):  # encoder pode ter sparse_output=True ou False
+        categ = categ.toarray()
+    df_categ = pd.DataFrame(categ, columns=ohe.get_feature_names_out())
     
     numeric_cols_base = scaler_estado.feature_names_in_
     df_numeric_base = pd.DataFrame(scaler_estado.transform(df[numeric_cols_base]), columns=numeric_cols_base)
@@ -187,6 +199,32 @@ def preprocess_input(input_data: CampaignInput, feature_type: str) -> np.ndarray
     df_final_state = df_processed.reindex(columns=colunas_estado, fill_value=0)
     return df_final_state.to_numpy().astype(np.float32)
 
+def get_quantiles(algo, obs: np.ndarray, act: np.ndarray) -> np.ndarray:
+    """Retorna os quantis (n_quantiles=64) do crítico QR para o par (estado, ação)."""
+    q = algo.impl._q_func_forwarder._forwarders[0]._q_func
+    q.eval()
+    with torch.no_grad():
+        out = q(
+            torch.tensor(obs, dtype=torch.float32).reshape(1, -1),
+            torch.tensor(act, dtype=torch.float32).reshape(1, -1),
+        )
+    return out.quantiles.cpu().numpy().ravel()
+
+def compute_risk(algo, scaler_recompensa, obs: np.ndarray, act: np.ndarray):
+    """VaR/CVaR 5% sobre a distribuição de quantis, em valores reais."""
+    quantis_norm = get_quantiles(algo, obs, act)
+    quantis_reais = scaler_recompensa.inverse_transform(quantis_norm.reshape(-1, 1)).ravel()
+    var_5 = np.quantile(quantis_reais, 0.05)
+    cvar_5 = quantis_reais[quantis_reais <= var_5].mean()
+    return var_5, cvar_5
+
+def predict_sl_profit(input_data: CampaignInput, **overrides) -> float:
+    """Lucro previsto pelo regressor SL, usando o mesmo encoder do treino (sl_ohe_encoder)."""
+    enc = models_state["sl_ohe"]
+    df = pd.DataFrame([{**input_data.model_dump(), **overrides}])
+    X_sl = enc.transform(df[list(enc.feature_names_in_)])
+    return models_state["sl_profit"].predict(X_sl)[0]
+
 # --- 7. Endpoints de Inferência ---
 
 @app.post("/recommend_price", response_model=PredictionResponse)
@@ -199,15 +237,13 @@ async def recommend_price(input_data: CampaignInput):
         action_norm = models_state["cql_venda_unica"].predict(state_vector)[0]
         preco_real = models_state["scaler_acao"].inverse_transform(action_norm.reshape(1, -1))[0][0]
         
-        # Risco
-        quantis_norm = models_state["cql_venda_unica"].predict_value(state_vector, action_norm.reshape(1, -1))[0]
-        quantis_reais = models_state["scaler_recompensa"].inverse_transform(quantis_norm.reshape(1, -1)).flatten()
-        
-        var_5 = np.percentile(quantis_reais, 5)
-        cvar_5 = quantis_reais[quantis_reais <= var_5].mean()
+        # Risco (quantis do crítico QR)
+        var_5, cvar_5 = compute_risk(
+            models_state["cql_venda_unica"], models_state["scaler_recompensa"], state_vector, action_norm
+        )
 
         # SL Prediction
-        lucro_sl = models_state["sl_profit"].predict(state_vector)[0]
+        lucro_sl = predict_sl_profit(input_data)
 
         return PredictionResponse(
             modelo="RL (Venda Única) Dinâmico",
@@ -228,15 +264,13 @@ async def recommend_subscription_price(input_data: CampaignInput):
         state_vector = preprocess_input(input_data, feature_type="assinatura")
         
         action_norm = models_state["cql_assinatura"].predict(state_vector)[0]
-        preco_real = models_state["scaler_assinatura_recompensa"].inverse_transform(action_norm.reshape(1, -1))[0][0]
+        preco_real = models_state["scaler_assinatura_acao"].inverse_transform(action_norm.reshape(1, -1))[0][0]
         
-        quantis_norm = models_state["cql_assinatura"].predict_value(state_vector, action_norm.reshape(1, -1))[0]
-        quantis_reais = models_state["scaler_assinatura_recompensa"].inverse_transform(quantis_norm.reshape(1, -1)).flatten()
+        var_5, cvar_5 = compute_risk(
+            models_state["cql_assinatura"], models_state["scaler_assinatura_recompensa"], state_vector, action_norm
+        )
         
-        var_5 = np.percentile(quantis_reais, 5)
-        cvar_5 = quantis_reais[quantis_reais <= var_5].mean()
-        
-        lucro_sl = models_state["sl_profit"].predict(state_vector)[0]
+        lucro_sl = predict_sl_profit(input_data, Modelo_Cobranca="Assinatura")
 
         return PredictionResponse(
             modelo="RL (Assinatura) LTV",
