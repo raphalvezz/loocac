@@ -35,7 +35,17 @@ const CampaignSimulatorPage = () => {
     queryKey: ['campaignSimulation', formData],
     queryFn: async () => {
       const endpoint = formData.pricingModel === 'fixed' ? '/recommend_price' : '/recommend_subscription_price';
-      const response = await axios.post(`http://127.0.0.1:8000${endpoint}`, formData);
+      // Nomes dos campos conforme o CampaignInput da API (main.py)
+      const payload = {
+        Regiao: formData.region,
+        Plataforma: formData.platform,
+        Tier: formData.product_tier,
+        Orcamento: Number(formData.budget),
+        Idade: formData.age,
+        Genero: formData.gender,
+        Conteudo: formData.content,
+      };
+      const response = await axios.post(`http://127.0.0.1:8000${endpoint}`, payload);
       const rlData = response.data; 
 
       const recommendation: PricingRecommendation = {
