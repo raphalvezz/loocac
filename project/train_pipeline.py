@@ -52,8 +52,8 @@ def run_pipeline():
         "4. Treinando RL Assinatura (LTV)"
     )
 
-    # 5. Comparar com os baselines no simulador
-    run_command(f"{sys.executable} avaliar_politicas.py", "5. Avaliando políticas vs. baselines")
+    # A comparação com os baselines (várias sementes, retreina o CQL) é um passo
+    # separado e demorado: python avaliar_politicas.py (docs/protocolo_avaliacao.md)
 
     print("\n" + "="*60)
     print("🎉 PIPELINE CONCLUÍDO: Todos os modelos foram treinados e salvos.")

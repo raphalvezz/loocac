@@ -1,47 +1,48 @@
 #!/usr/bin/env python3
 """
-Compara as políticas de preço no simulador (simulador.py).
+Avaliação das políticas de preço no simulador (protocolo: docs/protocolo_avaliacao.md).
 
-Para cada contexto de avaliação (cenário x região x plataforma), cada política
-escolhe um preço e medimos o lucro ESPERADO no simulador (sem ruído). O oráculo
-é o preço ótimo do próprio simulador, o limite superior.
+Para cada semente:
+  1. gera um dataset logado novo (simulador.gerar_dados);
+  2. treina as políticas treináveis nesse dataset;
+  3. cada política escolhe um preço para cada estado da grade de avaliação
+     (cenário x região x plataforma) e medimos o lucro ESPERADO no simulador.
 
-Políticas:
-  - aleatorio      preço uniforme na faixa observável
-  - meio_faixa     ponto médio da faixa observável
-  - maximo_faixa   preço máximo da faixa observável
-  - bandido        LightGBM (contexto + log-preço -> lucro) + busca em grade na faixa observável
-  - cql            agente CQL treinado (se o .d3 existir e o d3rlpy estiver instalado)
-  - oraculo_obs    melhor preço possível sabendo só o estado (teto real de qualquer política)
-  - oraculo        ótimo do simulador na faixa do cenário (referência dos percentuais)
+Métrica principal: % do lucro do oráculo (média sobre os estados), por tier.
+Com várias sementes: média e IC 95% (t de Student) e diferenças pareadas.
 
-"Faixa observável" = união das faixas dos cenários com o mesmo (Tier, Orçamento),
-que é o que o estado permite saber (simulador.faixa_observavel). Assim todas as
-políticas, exceto o oráculo, usam a mesma informação. Os cenários 3/4 e 5/6 são
-indistinguíveis no estado; o oráculo os distingue, então nem uma política
-perfeita chega a 100% neles.
+Saídas (pasta --saida, padrão resultados/):
+  por_semente.csv            uma linha por modelo x política x semente x tier
+  tabela_artigo.csv          média e IC 95% por modelo x tier x política
+  comparacoes.csv            diferenças pareadas entre políticas (IC 95%)
+  custo_explicabilidade.csv  tempo de treino, latência, GPU, explicabilidade
+  manifesto.json             versão do simulador, sementes e parâmetros
 
-Uso:  python avaliar_politicas.py            -> resultados_politicas.csv
+Uso:
+  python avaliar_politicas.py                      # 5 sementes, CQL se o d3rlpy estiver instalado
+  python avaliar_politicas.py --sementes 3 --sem-cql
 """
 
+import argparse
 import json
 import os
+import time
+from datetime import datetime, timezone
 
 import joblib
 import numpy as np
 import pandas as pd
+from scipy import stats
 
+import politicas as pol
 import simulador as sim
 
-MODELOS = {
-    'venda_unica': {'agente': 'modelo_rl_final.d3', 'alvo': 'Lucro_Real',
-                    'scaler_recompensa': 'scaler_recompensa.joblib'},
-    'assinatura': {'agente': 'modelo_rl_assinatura.d3', 'alvo': 'LTV_Real',
-                   'scaler_recompensa': 'scaler_assinatura_recompensa.joblib'},
-}
-CATEGORICAS_FIXAS = {'Idade': '25-34', 'Genero': 'Female', 'Conteudo': 'Video',
-                     'Tipo_Produto': 'InfoProduto', 'Modelo_Cobranca': 'Venda Unica',
-                     'Complexidade_Oferta': 'Media'}
+MODELOS = ['venda_unica', 'assinatura']
+TIERS = ['Low Ticket', 'High Ticket', 'Todos']
+SEMENTES_PADRAO = [42, 43, 44, 45, 46]
+# Comparações pareadas fixadas no protocolo (A - B)
+COMPARACOES = [('cql', 'aleatorio'), ('cql', 'meio_faixa'), ('cql', 'bandido'),
+               ('bandido', 'aleatorio'), ('bandido', 'meio_faixa')]
 
 
 def carregar_cenarios():
@@ -51,162 +52,172 @@ def carregar_cenarios():
     return sim.CENARIOS_ARTIGO
 
 
-def contextos(cenarios):
-    linhas = []
-    for idx, c in enumerate(cenarios):
-        for regiao in sim.REGIOES:
-            for plataforma in sim.PLATAFORMAS:
-                linhas.append({'Cenario': idx, 'Regiao': regiao, 'Plataforma': plataforma,
-                               'Tier': c['Tier'], 'Orcamento': c['Budget'],
-                               **CATEGORICAS_FIXAS, **sim.memoria_assinatura(c)})
-    return pd.DataFrame(linhas)
-
-
-def lucros(precos, ctx, cenarios, modelo):
+def lucros(precos, estados, cenarios, modelo):
     return np.array([
         float(sim.lucro_esperado(p, cenarios[r.Cenario], r.Regiao, r.Plataforma, modelo))
-        for p, r in zip(precos, ctx.itertuples())
+        for p, r in zip(precos, estados.itertuples())
     ])
 
 
-# ---------------------------------------------------------------------------
-# Políticas
-# ---------------------------------------------------------------------------
-def politica_oraculo(ctx, cenarios, modelo):
-    return np.array([sim.preco_otimo(cenarios[r.Cenario], r.Regiao, r.Plataforma, modelo)[0]
-                     for r in ctx.itertuples()])
+def consultar(politica, estados):
+    """Esconde o cenário verdadeiro das políticas não privilegiadas."""
+    return politica.precos(estados if politica.privilegiada else estados.drop(columns='Cenario'))
 
 
-def politica_oraculo_observavel(ctx, cenarios, modelo, n=2001):
-    """Para cada estado, o preço que maximiza o lucro médio entre os cenários que
-    o estado não distingue (pesos iguais, como nos dados)."""
-    precos = []
-    for r in ctx.itertuples():
-        c = cenarios[r.Cenario]
-        grupo = [d for d in cenarios if d['Tier'] == c['Tier'] and d['Budget'] == c['Budget']]
-        grade = np.geomspace(*sim.faixa_observavel(c, cenarios), n)
-        media = np.mean([sim.lucro_esperado(grade, d, r.Regiao, r.Plataforma, modelo) for d in grupo], axis=0)
-        precos.append(float(grade[np.argmax(media)]))
-    return np.array(precos)
+def pct_do_otimo(politica, estados, cenarios, otimo):
+    return lucros(consultar(politica, estados), estados, cenarios, politica.modelo) / otimo
 
 
-def lucro_aleatorio(ctx, cenarios, modelo, n=401):
-    """Lucro esperado da política uniforme na faixa observável (média sobre a faixa)."""
-    out = []
-    for r in ctx.itertuples():
-        c = cenarios[r.Cenario]
-        grade = np.linspace(*sim.faixa_observavel(c, cenarios), n)
-        out.append(float(np.mean(sim.lucro_esperado(grade, c, r.Regiao, r.Plataforma, modelo))))
-    return np.array(out)
-
-
-def treinar_bandido(df, alvo, ohe):
-    import lightgbm as lgb
-
-    def X(d, preco):
-        return np.column_stack([ohe.transform(d[list(ohe.feature_names_in_)]),
-                                np.log(d['Orcamento'].to_numpy()), np.log(preco)])
-
-    treino = df.iloc[: int(len(df) * 0.8)]  # mesmo split 80/20 dos notebooks (dados embaralhados)
-    modelo = lgb.LGBMRegressor(n_estimators=300, learning_rate=0.05, num_leaves=63,
-                               random_state=sim.SEED, verbose=-1)
-    modelo.fit(X(treino, treino['Preco_Amostra'].to_numpy()), treino[alvo])
-    return modelo, X
-
-
-def politica_bandido(ctx, cenarios, modelo_lgb, X, n=200):
-    precos = []
-    for i in range(len(ctx)):
-        linha = ctx.iloc[[i]]
-        # Só dentro da faixa observável: fora dela não há dados e as árvores extrapolam
-        grade = np.geomspace(*sim.faixa_observavel(cenarios[linha['Cenario'].iloc[0]], cenarios), n)
-        rep = linha.loc[linha.index.repeat(n)].reset_index(drop=True)
-        precos.append(float(grade[np.argmax(modelo_lgb.predict(X(rep, grade)))]))
-    return np.array(precos)
-
-
-def montar_obs(ctx, modelo, ohe, scaler_estado, scaler_memoria=None):
-    partes = [ohe.transform(ctx[list(ohe.feature_names_in_)]),
-              scaler_estado.transform(ctx[list(scaler_estado.feature_names_in_)])]
-    if modelo == 'assinatura':
-        partes.append(scaler_memoria.transform(ctx[list(scaler_memoria.feature_names_in_)]))
-    return np.concatenate(partes, axis=1).astype(np.float32)
-
-
-def politica_cql(algo, obs, ctx, faixas):
-    acoes = algo.predict(obs).reshape(-1)
-    return np.array([float(sim.acao_para_preco(a, t, faixas)) for a, t in zip(acoes, ctx['Tier'])])
+def metrica_selecao(modelo, cenarios):
+    """Score para escolher o checkpoint do CQL: % médio do ótimo na grade de avaliação."""
+    estados = sim.contextos(cenarios)
+    otimo = lucros(consultar(pol.Oraculo(modelo, cenarios), estados), estados, cenarios, modelo)
+    return lambda politica: float(np.mean(pct_do_otimo(politica, estados, cenarios, otimo)))
 
 
 class AvaliadorSimulado:
-    """Métrica de seleção de checkpoint para os notebooks: % médio do lucro ótimo.
-
-    Substitui o average_q (estimativa do próprio crítico), que favorecia a época 1.
-    """
+    """Usado pelos notebooks: score de um agente d3rlpy treinado com os artefatos do Generator."""
 
     def __init__(self, modelo):
-        self.modelo = modelo
-        self.cenarios = carregar_cenarios()
-        with open('faixas_tier.json') as f:
-            self.faixas = json.load(f)
-        self.ctx = contextos(self.cenarios)
+        cenarios = carregar_cenarios()
         memoria = joblib.load('scaler_assinatura_memoria.joblib') if modelo == 'assinatura' else None
-        self.obs = montar_obs(self.ctx, modelo, joblib.load('ohe_encoder.joblib'),
-                              joblib.load('scaler_estado.joblib'), memoria)
-        self.otimo = lucros(politica_oraculo(self.ctx, self.cenarios, modelo), self.ctx, self.cenarios, modelo)
+        self.politica = pol.CQL(modelo, cenarios)
+        self.politica.prep = pol.PreprocessadorEstado(
+            modelo, joblib.load('ohe_encoder.joblib'), joblib.load('scaler_estado.joblib'), memoria)
+        self.ctx = sim.contextos(cenarios)
+        self._score = metrica_selecao(modelo, cenarios)
+
+    def precos(self, algo):
+        self.politica.algo = algo
+        return consultar(self.politica, self.ctx)
 
     def __call__(self, algo):
-        precos = politica_cql(algo, self.obs, self.ctx, self.faixas)
-        return float(np.mean(lucros(precos, self.ctx, self.cenarios, self.modelo) / self.otimo))
+        self.politica.algo = algo
+        return self._score(self.politica)
 
 
 # ---------------------------------------------------------------------------
-def avaliar(modelo):
-    cfg = MODELOS[modelo]
+def ic95(valores):
+    valores = np.asarray(valores, dtype=float)
+    media = float(valores.mean())
+    if len(valores) < 2:
+        return media, media, media
+    meia = float(stats.t.ppf(0.975, len(valores) - 1) * valores.std(ddof=1) / np.sqrt(len(valores)))
+    return media, media - meia, media + meia
+
+
+def construir_politicas(modelo, cenarios, args):
+    classes = [c for c in pol.TODAS if not (c is pol.CQL and args.sem_cql)]
+    out = []
+    for cls in classes:
+        if cls is pol.CQL:
+            out.append(pol.CQL(modelo, cenarios, n_passos=args.passos_cql,
+                               avaliador=metrica_selecao(modelo, cenarios)))
+        else:
+            out.append(cls(modelo, cenarios))
+    return out
+
+
+def avaliar(args):
     cenarios = carregar_cenarios()
-    with open('faixas_tier.json') as f:
-        faixas = json.load(f)
-    ctx = contextos(cenarios)
-    df = pd.read_csv('sl_dataset_combined.csv')
-    ohe = joblib.load('ohe_encoder.joblib')
+    estados = sim.contextos(cenarios)
+    linhas, custos = [], []
+    for semente in args.sementes:
+        print(f"\n=== semente {semente}: gerando dados ===")
+        dados = sim.gerar_dados(cenarios, args.n_por_cenario, semente)
+        for modelo in MODELOS:
+            otimo = lucros(consultar(pol.Oraculo(modelo, cenarios), estados), estados, cenarios, modelo)
+            for politica in construir_politicas(modelo, cenarios, args):
+                t0 = time.perf_counter()
+                politica.treinar(dados, semente)
+                t_treino = time.perf_counter() - t0
+                t0 = time.perf_counter()
+                precos = consultar(politica, estados)
+                latencia_ms = 1000 * (time.perf_counter() - t0) / len(estados)
+                valores = lucros(precos, estados, cenarios, modelo)
+                print(f"  {modelo:12s} {politica.nome:13s} {100 * np.mean(valores / otimo):6.1f}% do ótimo"
+                      f"  (treino {t_treino:.1f}s)")
+                for tier in TIERS:
+                    m = np.ones(len(estados), bool) if tier == 'Todos' else (estados['Tier'] == tier).to_numpy()
+                    linhas.append({'modelo': modelo, 'politica': politica.nome, 'semente': semente,
+                                   'tier': tier, 'lucro_medio': valores[m].mean(),
+                                   'pct_do_otimo': 100 * np.mean(valores[m] / otimo[m])})
+                custos.append({'modelo': modelo, 'politica': politica.nome, 'semente': semente,
+                               'tempo_treino_s': t_treino, 'latencia_ms': latencia_ms,
+                               'gpu': politica.gpu, 'explicabilidade': politica.explicabilidade})
+    return pd.DataFrame(linhas), pd.DataFrame(custos)
 
-    otimo = lucros(politica_oraculo(ctx, cenarios, modelo), ctx, cenarios, modelo)
-    faixa = [sim.faixa_observavel(cenarios[i], cenarios) for i in ctx['Cenario']]
-    resultados = {
-        'aleatorio': lucro_aleatorio(ctx, cenarios, modelo),
-        'meio_faixa': lucros([(lo + hi) / 2 for lo, hi in faixa], ctx, cenarios, modelo),
-        'maximo_faixa': lucros([hi for _, hi in faixa], ctx, cenarios, modelo),
-    }
-    lgb_modelo, X = treinar_bandido(df, cfg['alvo'], ohe)
-    resultados['bandido'] = lucros(politica_bandido(ctx, cenarios, lgb_modelo, X), ctx, cenarios, modelo)
 
-    if os.path.exists(cfg['agente']):
-        try:
-            import d3rlpy
-            algo = d3rlpy.load_learnable(cfg['agente'], device='cpu')
-            memoria = joblib.load('scaler_assinatura_memoria.joblib') if modelo == 'assinatura' else None
-            obs = montar_obs(ctx, modelo, ohe, joblib.load('scaler_estado.joblib'), memoria)
-            resultados['cql'] = lucros(politica_cql(algo, obs, ctx, faixas), ctx, cenarios, modelo)
-        except ImportError:
-            print(f"  (d3rlpy não instalado; CQL de {modelo} fora da comparação)")
-    else:
-        print(f"  ({cfg['agente']} não encontrado; CQL de {modelo} fora da comparação)")
-    resultados['oraculo_obs'] = lucros(politica_oraculo_observavel(ctx, cenarios, modelo), ctx, cenarios, modelo)
-    resultados['oraculo'] = otimo
-
+def resumir(por_semente):
     linhas = []
-    for nome, valores in resultados.items():
-        for tier in ['Low Ticket', 'High Ticket', 'Todos']:
-            m = (ctx['Tier'] == tier).to_numpy() if tier != 'Todos' else np.ones(len(ctx), bool)
-            linhas.append({'modelo': modelo, 'politica': nome, 'tier': tier,
-                           'lucro_medio': valores[m].mean(),
-                           'pct_do_otimo': 100 * np.mean(valores[m] / otimo[m])})
+    for (modelo, tier, politica), g in por_semente.groupby(['modelo', 'tier', 'politica'], sort=False):
+        pct, pct_lo, pct_hi = ic95(g['pct_do_otimo'])
+        lucro, lucro_lo, lucro_hi = ic95(g['lucro_medio'])
+        linhas.append({'modelo': modelo, 'tier': tier, 'politica': politica, 'n_sementes': len(g),
+                       'pct_do_otimo': pct, 'pct_ic95_inf': pct_lo, 'pct_ic95_sup': pct_hi,
+                       'lucro_medio': lucro, 'lucro_ic95_inf': lucro_lo, 'lucro_ic95_sup': lucro_hi})
     return pd.DataFrame(linhas)
 
 
+def comparar(por_semente):
+    linhas = []
+    tab = por_semente.pivot_table(index=['modelo', 'tier', 'semente'], columns='politica', values='pct_do_otimo')
+    for a, b in COMPARACOES:
+        if a not in tab or b not in tab:
+            continue
+        for (modelo, tier), g in tab.groupby(level=['modelo', 'tier'], sort=False):
+            media, lo, hi = ic95(g[a] - g[b])  # pareado: mesma semente = mesmo dataset
+            linhas.append({'modelo': modelo, 'tier': tier, 'comparacao': f'{a} - {b}', 'n_sementes': len(g),
+                           'diferenca_pp': media, 'ic95_inf': lo, 'ic95_sup': hi,
+                           'conclusao': 'A > B' if lo > 0 else ('A < B' if hi < 0 else 'inconclusivo')})
+    return pd.DataFrame(linhas)
+
+
+def resumir_custos(custos):
+    return (custos.groupby(['modelo', 'politica'], sort=False)
+            .agg(tempo_treino_s=('tempo_treino_s', 'mean'), latencia_ms=('latencia_ms', 'mean'),
+                 gpu=('gpu', 'first'), explicabilidade=('explicabilidade', 'first'))
+            .reset_index())
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument('--sementes', type=int, default=len(SEMENTES_PADRAO),
+                   help='quantas sementes (a partir de 42); o protocolo usa 5')
+    p.add_argument('--n-por-cenario', type=int, default=5000)
+    p.add_argument('--passos-cql', type=int, default=50000)
+    p.add_argument('--sem-cql', action='store_true', help='pula o CQL (sem d3rlpy/torch)')
+    p.add_argument('--saida', default='resultados')
+    args = p.parse_args()
+    args.sementes = list(range(42, 42 + args.sementes))
+    if not args.sem_cql:
+        try:
+            import d3rlpy  # noqa: F401
+        except ImportError:
+            print("d3rlpy não instalado: CQL fora da comparação (use --sem-cql para silenciar).")
+            args.sem_cql = True
+
+    por_semente, custos = avaliar(args)
+    os.makedirs(args.saida, exist_ok=True)
+    tabela = resumir(por_semente)
+    por_semente.to_csv(os.path.join(args.saida, 'por_semente.csv'), index=False)
+    tabela.to_csv(os.path.join(args.saida, 'tabela_artigo.csv'), index=False)
+    comparar(por_semente).to_csv(os.path.join(args.saida, 'comparacoes.csv'), index=False)
+    resumir_custos(custos).to_csv(os.path.join(args.saida, 'custo_explicabilidade.csv'), index=False)
+    with open(os.path.join(args.saida, 'manifesto.json'), 'w') as f:
+        json.dump({'simulador_versao': sim.VERSAO, 'sementes': args.sementes,
+                   'n_por_cenario': args.n_por_cenario, 'passos_cql': None if args.sem_cql else args.passos_cql,
+                   'cql_incluido': not args.sem_cql, 'n_estados_avaliacao': int(len(sim.contextos(carregar_cenarios()))),
+                   'gerado_em': datetime.now(timezone.utc).isoformat(timespec='seconds')}, f, indent=2)
+
+    with pd.option_context('display.float_format', '{:,.1f}'.format, 'display.width', 140):
+        print('\n% do ótimo (média [IC 95%]) por tier:')
+        tabela['valor'] = tabela.apply(
+            lambda r: f"{r.pct_do_otimo:.1f} [{r.pct_ic95_inf:.1f}, {r.pct_ic95_sup:.1f}]", axis=1)
+        print(tabela.pivot_table(index=['modelo', 'politica'], columns='tier', values='valor',
+                                 aggfunc='first', sort=False)[TIERS].to_string())
+    print(f"\nArquivos em {args.saida}/")
+
+
 if __name__ == '__main__':
-    tabela = pd.concat([avaliar(m) for m in MODELOS], ignore_index=True)
-    tabela.to_csv('resultados_politicas.csv', index=False)
-    with pd.option_context('display.float_format', '{:,.1f}'.format, 'display.width', 120):
-        print(tabela[tabela['tier'] == 'Todos'].to_string(index=False))
-        print('\nPor tier: resultados_politicas.csv')
+    main()

@@ -14,6 +14,15 @@ do contexto (Região x Plataforma), então o preço ótimo também depende.
 """
 
 import numpy as np
+import pandas as pd
+
+# ----------------------------------------------------------------------------
+# SIMULADOR CONGELADO (ver docs/protocolo_avaliacao.md)
+# Qualquer mudança na economia abaixo muda os resultados do capítulo 5. Só se
+# altera para corrigir um erro: nesse caso, suba VERSAO, registre o motivo no
+# protocolo e atualize os valores de referência em tests/test_simulador.py.
+# ----------------------------------------------------------------------------
+VERSAO = "1.0"
 
 SEED = 42
 
@@ -58,6 +67,11 @@ CENTRO_WTP = {'venda_unica': 1.20, 'assinatura': 1.35}
 # Assinatura: churn mensal no preço médio da faixa e sua sensibilidade ao preço
 CHURN_BASE = 0.05
 ELASTICIDADE_CHURN = 0.4
+
+# Campos do estado que não variam nos dados (ceteris paribus)
+CATEGORICAS_FIXAS = {'Idade': '25-34', 'Genero': 'Female', 'Conteudo': 'Video',
+                     'Tipo_Produto': 'InfoProduto', 'Modelo_Cobranca': 'Venda Unica',
+                     'Complexidade_Oferta': 'Media'}
 
 # Features de memória da assinatura (mock, iguais para todo o dataset)
 def memoria_assinatura(cenario):
@@ -105,15 +119,6 @@ def amostrar_lucro(preco, cenario, regiao, plataforma, modelo, rng):
     ruido = rng.lognormal(-SIGMA_RUIDO ** 2 / 2, SIGMA_RUIDO)
     return float(lucro_esperado(preco, cenario, regiao, plataforma, modelo) * ruido)
 
-def faixa_observavel(cenario, cenarios):
-    """Faixa de preço que um agente consegue associar ao estado (Tier, Orçamento).
-
-    Cenários com mesmo Tier e orçamento (3/4 e 5/6) são indistinguíveis no estado
-    da venda única, então a faixa observável é a união das faixas deles.
-    """
-    grupo = [c for c in cenarios if c['Tier'] == cenario['Tier'] and c['Budget'] == cenario['Budget']]
-    return min(c['Price_Min'] for c in grupo), max(c['Price_Max'] for c in grupo)
-
 def preco_otimo(cenario, regiao, plataforma, modelo='venda_unica', faixa=None, n=2001):
     """Preço que maximiza o lucro esperado (busca em grade). Por padrão, na faixa do cenário."""
     lo, hi = faixa if faixa is not None else (cenario['Price_Min'], cenario['Price_Max'])
@@ -144,3 +149,49 @@ def acao_para_preco(acao, tier, faixas):
     lo, hi = np.log(faixas[tier][0]), np.log(faixas[tier][1])
     acao = np.clip(acao, -1.0, 1.0)
     return np.exp(lo + (acao + 1) / 2 * (hi - lo))
+
+
+# ============================================================================
+# 4. Dados e contextos de avaliação
+# ============================================================================
+def gerar_dados(cenarios, n_por_cenario=5000, semente=SEED):
+    """Dataset logado: política de coleta uniforme na faixa de cada cenário.
+
+    Com semente=SEED reproduz exatamente o dataset do Generator_NEW.py.
+    As linhas saem embaralhadas (o split 80/20 sequencial dos notebooks depende disso).
+    """
+    rng = np.random.default_rng(semente)
+    linhas = []
+    for idx, cenario in enumerate(cenarios):
+        for _ in range(n_por_cenario):
+            regiao = rng.choice(REGIOES)
+            plataforma = rng.choice(PLATAFORMAS)
+            preco = rng.uniform(cenario['Price_Min'], cenario['Price_Max'])
+            linhas.append({
+                'Cenario': idx,
+                'Regiao': regiao,
+                'Plataforma': plataforma,
+                'Tier': cenario['Tier'],
+                'Orcamento': cenario['Budget'],
+                **CATEGORICAS_FIXAS,
+                **memoria_assinatura(cenario),
+                'Preco_Amostra': preco,
+                'Lucro_Real': amostrar_lucro(preco, cenario, regiao, plataforma, 'venda_unica', rng),
+                'LTV_Real': amostrar_lucro(preco, cenario, regiao, plataforma, 'assinatura', rng),
+            })
+    return pd.DataFrame(linhas).sample(frac=1.0, random_state=semente).reset_index(drop=True)
+
+def contextos(cenarios):
+    """Grade de avaliação: cada cenário x região x plataforma (144 estados na tabela original).
+
+    A coluna 'Cenario' identifica o mundo verdadeiro; só políticas privilegiadas
+    (oráculos) podem lê-la.
+    """
+    linhas = []
+    for idx, c in enumerate(cenarios):
+        for regiao in REGIOES:
+            for plataforma in PLATAFORMAS:
+                linhas.append({'Cenario': idx, 'Regiao': regiao, 'Plataforma': plataforma,
+                               'Tier': c['Tier'], 'Orcamento': c['Budget'],
+                               **CATEGORICAS_FIXAS, **memoria_assinatura(c)})
+    return pd.DataFrame(linhas)

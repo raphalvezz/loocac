@@ -23,7 +23,6 @@ import numpy as np
 import pandas as pd
 from d3rlpy.dataset import ReplayBuffer, FIFOBuffer, Episode
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from tqdm import tqdm
 
 import simulador as sim
 
@@ -32,7 +31,6 @@ print("GENERATOR (v6) - Bandido contextual sobre os cenários da tabela")
 print("="*80)
 
 N_POR_CENARIO = 5000
-rng = np.random.default_rng(sim.SEED)
 
 # ============================================================================
 # 1. Cenários (tabela do artigo, opcionalmente restritos pelo painel)
@@ -70,33 +68,8 @@ FAIXAS_TIER = sim.faixas_tier(CENARIOS)
 # ============================================================================
 # 2. Gerar amostras
 # ============================================================================
-def generate_datasets():
-    linhas = []
-    print(f"Gerando {N_POR_CENARIO * len(CENARIOS)} amostras ({N_POR_CENARIO} por cenário)...")
-    for idx, cenario in enumerate(tqdm(CENARIOS)):
-        for _ in range(N_POR_CENARIO):
-            regiao = rng.choice(sim.REGIOES)
-            plataforma = rng.choice(sim.PLATAFORMAS)
-            # Política de coleta: preço uniforme dentro da faixa do cenário
-            preco = rng.uniform(cenario['Price_Min'], cenario['Price_Max'])
-            linhas.append({
-                'Cenario': idx,
-                'Regiao': regiao,
-                'Plataforma': plataforma,
-                'Tier': cenario['Tier'],
-                'Orcamento': cenario['Budget'],
-                'Idade': '25-34', 'Genero': 'Female', 'Conteudo': 'Video',
-                'Tipo_Produto': 'InfoProduto', 'Modelo_Cobranca': 'Venda Unica', 'Complexidade_Oferta': 'Media',
-                **sim.memoria_assinatura(cenario),
-                'Preco_Amostra': preco,
-                'Lucro_Real': sim.amostrar_lucro(preco, cenario, regiao, plataforma, 'venda_unica', rng),
-                'LTV_Real': sim.amostrar_lucro(preco, cenario, regiao, plataforma, 'assinatura', rng),
-            })
-    df = pd.DataFrame(linhas)
-    # Embaralha: sem isso, o split 80/20 sequencial dos notebooks testa só os últimos cenários
-    return df.sample(frac=1.0, random_state=sim.SEED).reset_index(drop=True)
-
-df = generate_datasets()
+print(f"Gerando {N_POR_CENARIO * len(CENARIOS)} amostras ({N_POR_CENARIO} por cenário)...")
+df = sim.gerar_dados(CENARIOS, N_POR_CENARIO, sim.SEED)
 
 # ============================================================================
 # 3. Processamento e salvamento

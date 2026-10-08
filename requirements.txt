@@ -2,11 +2,13 @@
 fastapi
 uvicorn[standard]
 httpx            # TestClient do FastAPI (testes)
+pytest
 
 # Dados e modelos
 numpy
 pandas
 scikit-learn==1.7.2   # mesma versão usada para salvar os .joblib
+scipy
 joblib
 torch
 d3rlpy==2.8.1
