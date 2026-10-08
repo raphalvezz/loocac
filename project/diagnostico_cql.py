@@ -55,8 +55,7 @@ def diagnosticar(nome, cenarios, dados, estados, passos, semente):
     obs = cql.prep.transform(estados.drop(columns='Cenario'))
     q = curva_critico(cql, obs)
     preco_ator = av.consultar(cql, estados)
-    preco_critico = np.array([float(sim.acao_para_preco(ACOES[i], t, cql.faixas_tier))
-                              for i, t in zip(q.argmax(axis=1), estados['Tier'])])
+    preco_critico = cql.acao_para_preco(ACOES[q.argmax(axis=1)], estados)
     preco_oraculo = av.consultar(pol.OraculoObservavel(MODELO, cenarios), estados)
     otimo = av.lucros(av.consultar(pol.Oraculo(MODELO, cenarios), estados), estados, cenarios, MODELO)
     linhas = []
@@ -71,16 +70,17 @@ def diagnosticar(nome, cenarios, dados, estados, passos, semente):
                        'faixa_precos_ator': f"{preco_ator[m].min():.0f}-{preco_ator[m].max():.0f}"})
     i = estados.index[(estados['Cenario'] == ESTADO_FIGURA['Cenario']) & (estados['Regiao'] == ESTADO_FIGURA['Regiao'])
                       & (estados['Plataforma'] == ESTADO_FIGURA['Plataforma'])][0]
-    figura = {'q': q[i], 'preco_ator': preco_ator[i], 'faixas': cql.faixas_tier}
+    linha = estados.loc[[i]]
+    figura = {'q': q[i], 'preco_ator': preco_ator[i],
+              'precos': cql.acao_para_preco(ACOES, linha.loc[linha.index.repeat(len(ACOES))])}
     return pd.DataFrame(linhas), figura
 
 
 def desenhar(figuras, cenarios, saida):
     c = cenarios[ESTADO_FIGURA['Cenario']]
-    tier = c['Tier']
     fig, eixos = plt.subplots(1, len(figuras), figsize=(5.2 * len(figuras), 3.8), facecolor='#fcfcfb', squeeze=False)
     for ax, (nome, f) in zip(eixos[0], figuras.items()):
-        precos = np.array([float(sim.acao_para_preco(a, tier, f['faixas'])) for a in ACOES])
+        precos = f['precos']
         lucro = sim.lucro_esperado(precos, c, ESTADO_FIGURA['Regiao'], ESTADO_FIGURA['Plataforma'], MODELO)
         norm = lambda v: (v - v.min()) / (v.max() - v.min() + 1e-12)  # noqa: E731
         ax.set_facecolor('#fcfcfb')
@@ -106,7 +106,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--passos', type=int, default=5000)
     ap.add_argument('--semente', type=int, default=42)
-    ap.add_argument('--configs', nargs='*', default=['base', 'recompensa_estado'])
+    ap.add_argument('--configs', nargs='*', default=['base', 'recompensa_estado', 'acao_estado+recompensa_estado'])
     ap.add_argument('--saida', default='resultados')
     ap.add_argument('--figura', default='docs/figuras/diagnostico_cql_low_ticket.png')
     args = ap.parse_args()

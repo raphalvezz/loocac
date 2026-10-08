@@ -10,6 +10,8 @@ Configurações (uma alteração por vez em relação à base = configuração d
   gamma_0.98           γ > 0 com transições independentes (como nos notebooks antigos)
   recompensa_log       log(lucro) padronizado
   recompensa_estado    lucro / lucro médio da chave de estado - 1
+  acao_estado          ação [-1, 1] = faixa observável do estado (correção do diagnóstico)
+  acao_estado+recompensa_estado   as duas juntas
 
 Treino curto (--passos, padrão 5.000) com seleção do checkpoint pelo lucro
 simulado, como no treino completo. Métricas: % do ótimo por tier e, no Low
@@ -38,6 +40,9 @@ CONFIGS = {
     'gamma_0.98': {'gamma': 0.98},
     'recompensa_log': {'escala_recompensa': 'log'},
     'recompensa_estado': {'escala_recompensa': 'estado'},
+    # Correção proposta pelo diagnóstico (diagnostico_cql.py)
+    'acao_estado': {'escala_acao': 'estado'},
+    'acao_estado+recompensa_estado': {'escala_acao': 'estado', 'escala_recompensa': 'estado'},
 }
 
 

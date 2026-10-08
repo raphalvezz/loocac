@@ -238,6 +238,8 @@ class CQL(Politica):
       gamma               0.0 = bandido contextual de um passo
       peso_conservador    conservative_weight do CQL
       escala_acao         'tier'   ação [-1, 1] = faixa do Tier do estado (log min-max)
+                          'estado' ação [-1, 1] = faixa observável do estado (a mesma
+                                   em que o bandido busca o preço)
                           'global' ação [-1, 1] = faixa de todos os preços (log min-max)
       escala_recompensa   'global' padronização única (lucros de centenas a milhões)
                           'log'    log(lucro) padronizado
@@ -258,7 +260,7 @@ class CQL(Politica):
             lo = min(f[0] for f in self.faixas_tier.values())
             hi = max(f[1] for f in self.faixas_tier.values())
             self.faixas_tier = {t: [lo, hi] for t in self.faixas_tier}
-        elif escala_acao != 'tier':
+        elif escala_acao not in ('tier', 'estado'):
             raise ValueError(escala_acao)
         if escala_recompensa not in ('global', 'log', 'estado'):
             raise ValueError(escala_recompensa)
@@ -286,8 +288,7 @@ class CQL(Politica):
         d3rlpy.seed(semente)
         treino = dados.iloc[: int(len(dados) * FRACAO_TREINO)]
         self.prep = PreprocessadorEstado(self.modelo).fit(treino)
-        acoes = np.array([sim.preco_para_acao(p, t, self.faixas_tier)
-                          for p, t in zip(treino['Preco_Amostra'], treino['Tier'])]).reshape(-1, 1)
+        acoes = self.preco_para_acao(treino['Preco_Amostra'].to_numpy(), treino).reshape(-1, 1)
         episodio = Episode(self.prep.transform(treino), acoes.astype(np.float32),
                            self._recompensas(treino).astype(np.float32), True)
         buffer = ReplayBuffer(FIFOBuffer(limit=len(treino)), episodes=[episodio])
@@ -317,6 +318,20 @@ class CQL(Politica):
             self.algo.load_model(caminho)
         self.score_selecao = melhor
 
+    def faixas_acao(self, estados):
+        """(lo, hi) de preço que a ação [-1, 1] cobre, por linha de `estados`."""
+        if self.escala_acao == 'estado':
+            return np.array(self.faixas(estados), dtype=float)
+        return np.array([self.faixas_tier[t] for t in estados['Tier']], dtype=float)
+
+    def preco_para_acao(self, precos, estados):
+        lo, hi = np.log(self.faixas_acao(estados)).T
+        return 2 * (np.log(np.asarray(precos, dtype=float)) - lo) / (hi - lo) - 1
+
+    def acao_para_preco(self, acoes, estados):
+        lo, hi = np.log(self.faixas_acao(estados)).T
+        return np.exp(lo + (np.clip(acoes, -1.0, 1.0) + 1) / 2 * (hi - lo))
+
     def _recompensas(self, treino):
         lucro = treino[ALVO[self.modelo]].to_numpy(dtype=float)
         if self.escala_recompensa == 'log':
@@ -329,8 +344,7 @@ class CQL(Politica):
 
     def precos(self, estados):
         acoes = self.algo.predict(self.prep.transform(estados)).reshape(-1)
-        return np.array([float(sim.acao_para_preco(a, t, self.faixas_tier))
-                         for a, t in zip(acoes, estados['Tier'])])
+        return self.acao_para_preco(acoes, estados)
 
 
 def _cuda():
