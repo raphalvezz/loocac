@@ -232,15 +232,38 @@ class PreprocessadorEstado:
 
 
 class CQL(Politica):
+    """CQL (d3rlpy) com a configuração dos notebooks.
+
+    Opções usadas nas ablações (ablacoes_cql.py); os padrões são os dos notebooks:
+      gamma               0.0 = bandido contextual de um passo
+      peso_conservador    conservative_weight do CQL
+      escala_acao         'tier'   ação [-1, 1] = faixa do Tier do estado (log min-max)
+                          'global' ação [-1, 1] = faixa de todos os preços (log min-max)
+      escala_recompensa   'global' padronização única (lucros de centenas a milhões)
+                          'log'    log(lucro) padronizado
+                          'estado' lucro / lucro médio da chave de estado - 1; com
+                                   gamma=0 não muda o melhor preço de cada estado
+    """
     nome = 'cql'
     treinavel = True
     gpu = 'opcional (acelera o treino)'
     explicabilidade = 'baixa: rede neural; expõe só a ação e os quantis de lucro do crítico'
 
     def __init__(self, modelo, cenarios, n_passos=50000, passos_por_epoca=1000, paciencia=20,
-                 avaliador=None):
+                 avaliador=None, gamma=0.0, peso_conservador=5.0, escala_acao='tier',
+                 escala_recompensa='global'):
         super().__init__(modelo, cenarios)
         self.faixas_tier = sim.faixas_tier(cenarios)
+        if escala_acao == 'global':
+            lo = min(f[0] for f in self.faixas_tier.values())
+            hi = max(f[1] for f in self.faixas_tier.values())
+            self.faixas_tier = {t: [lo, hi] for t in self.faixas_tier}
+        elif escala_acao != 'tier':
+            raise ValueError(escala_acao)
+        if escala_recompensa not in ('global', 'log', 'estado'):
+            raise ValueError(escala_recompensa)
+        self.gamma, self.peso_conservador = gamma, peso_conservador
+        self.escala_acao, self.escala_recompensa = escala_acao, escala_recompensa
         self.n_passos, self.passos_por_epoca, self.paciencia = n_passos, passos_por_epoca, paciencia
         # Função (algo -> score) para escolher o checkpoint; ver avaliar_politicas.metrica_selecao
         self.avaliador = avaliador
@@ -263,18 +286,17 @@ class CQL(Politica):
         d3rlpy.seed(semente)
         treino = dados.iloc[: int(len(dados) * FRACAO_TREINO)]
         self.prep = PreprocessadorEstado(self.modelo).fit(treino)
-        scaler_rec = StandardScaler().fit(treino[[ALVO[self.modelo]]])
         acoes = np.array([sim.preco_para_acao(p, t, self.faixas_tier)
                           for p, t in zip(treino['Preco_Amostra'], treino['Tier'])]).reshape(-1, 1)
         episodio = Episode(self.prep.transform(treino), acoes.astype(np.float32),
-                           scaler_rec.transform(treino[[ALVO[self.modelo]]]).astype(np.float32), True)
+                           self._recompensas(treino).astype(np.float32), True)
         buffer = ReplayBuffer(FIFOBuffer(limit=len(treino)), episodes=[episodio])
 
         self.algo = CQLConfig(
-            batch_size=256, gamma=0.0,  # bandido contextual de um passo
+            batch_size=256, gamma=self.gamma,
             observation_scaler=None, action_scaler=None, reward_scaler=None,
             alpha_learning_rate=1e-4, actor_learning_rate=1e-4, critic_learning_rate=3e-4,
-            conservative_weight=5.0, q_func_factory=QRQFunctionFactory(n_quantiles=64),
+            conservative_weight=self.peso_conservador, q_func_factory=QRQFunctionFactory(n_quantiles=64),
         ).create(device='cuda:0' if _cuda() else 'cpu')
 
         melhor, sem_melhora = -np.inf, 0
@@ -294,6 +316,16 @@ class CQL(Politica):
                         break
             self.algo.load_model(caminho)
         self.score_selecao = melhor
+
+    def _recompensas(self, treino):
+        lucro = treino[ALVO[self.modelo]].to_numpy(dtype=float)
+        if self.escala_recompensa == 'log':
+            lucro = np.log(np.maximum(lucro, 1e-6))
+        elif self.escala_recompensa == 'estado':
+            grupo = [str(k) for k in chaves(self.modelo, treino)]
+            media = pd.Series(lucro).groupby(grupo).transform('mean').to_numpy()
+            return (lucro / media - 1).reshape(-1, 1)
+        return StandardScaler().fit_transform(lucro.reshape(-1, 1))
 
     def precos(self, estados):
         acoes = self.algo.predict(self.prep.transform(estados)).reshape(-1)
