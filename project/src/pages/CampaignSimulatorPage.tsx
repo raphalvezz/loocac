@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
-import { DollarSign, Calculator, Settings } from 'lucide-react'; // Removidos ícones não usados
-import { CampaignSimulation, PricingRecommendation } from '../types/campaign';
+import { DollarSign } from 'lucide-react';
+import { PricingRecommendation } from '../types/campaign';
+
+const API_URL = 'http://127.0.0.1:8000';
 
 const CampaignSimulatorPage = () => {
   // 1. Estado da Configuração de Mercado (Gêmeo Digital)
@@ -12,6 +14,7 @@ const CampaignSimulatorPage = () => {
     budgetMin: 500, budgetMax: 20000
   });
   const [isRetraining, setIsRetraining] = useState(false);
+  const [marketMessage, setMarketMessage] = useState<string | null>(null);
 
   // 2. Estado do Formulário (Inputs Reais da IA)
   const [formData, setFormData] = useState({
@@ -27,8 +30,28 @@ const CampaignSimulatorPage = () => {
   
   const [showResults, setShowResults] = useState(false);
 
-  // ... (Função handleUpdateMarket mantém-se igual) ...
-  const handleUpdateMarket = async () => { /* ... código anterior ... */ };
+  // Salva as faixas no backend (config_market.json) e dispara o re-treino em background
+  const handleUpdateMarket = async () => {
+    setIsRetraining(true);
+    setMarketMessage(null);
+    try {
+      const response = await axios.post(`${API_URL}/configure_market`, marketConfig);
+      setMarketMessage(response.data.message);
+    } catch {
+      setMarketMessage('Erro ao salvar a configuração. Verifique o backend.');
+    } finally {
+      setIsRetraining(false);
+    }
+  };
+
+  const marketFields: { key: keyof typeof marketConfig; label: string }[] = [
+    { key: 'lowMin', label: 'Low Ticket min' },
+    { key: 'lowMax', label: 'Low Ticket max' },
+    { key: 'highMin', label: 'High Ticket min' },
+    { key: 'highMax', label: 'High Ticket max' },
+    { key: 'budgetMin', label: 'Budget min' },
+    { key: 'budgetMax', label: 'Budget max' },
+  ];
 
   // 3. Query para API
   const { data: simulation, isLoading, error, refetch } = useQuery({
@@ -45,15 +68,18 @@ const CampaignSimulatorPage = () => {
         Genero: formData.gender,
         Conteudo: formData.content,
       };
-      const response = await axios.post(`http://127.0.0.1:8000${endpoint}`, payload);
+      const response = await axios.post(`${API_URL}${endpoint}`, payload);
       const rlData = response.data; 
 
       const recommendation: PricingRecommendation = {
         type: formData.pricingModel === 'subscription' ? 'subscription' : 'fixed',
         amount: rlData.preco_recomendado,
-        estimatedRevenue: (formData.budget * ((rlData.lucro_estimado_sl || 1.5))) + formData.budget, // Estimativa baseada no SL
-        roi: ((rlData.lucro_estimado_sl || 0) / formData.budget) * 100,
-        coverage: 0.85,
+        rawAmount: rlData.preco_rl_bruto,
+        kbsApplied: rlData.kbs_applied,
+        estimatedProfit: rlData.lucro_estimado_sl,
+        roi: (rlData.lucro_estimado_sl / formData.budget) * 100,
+        var5: rlData.var_5_percent,
+        cvar5: rlData.cvar_5_percent,
         locations: [formData.region]
       };
       
@@ -80,10 +106,19 @@ const CampaignSimulatorPage = () => {
 
           {/* Painel de Configuração de Mercado */}
           <div className="mb-8 bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-             {/* ... (Código do Painel de Configuração mantém-se igual) ... */}
+             <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Gêmeo Digital: faixas de mercado</h2>
+             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+               {marketFields.map(({ key, label }) => (
+                 <label key={key} className="block text-xs text-gray-600 dark:text-gray-300">
+                   {label}
+                   <input type="number" value={marketConfig[key]} onChange={(e) => setMarketConfig({ ...marketConfig, [key]: Number(e.target.value) })} className="mt-1 block w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                 </label>
+               ))}
+             </div>
              <button onClick={handleUpdateMarket} disabled={isRetraining} className="w-full py-2 bg-secondary-600 text-white rounded hover:bg-secondary-700 text-sm font-medium disabled:opacity-50">
                 {isRetraining ? "Re-treinando..." : "Atualizar Gêmeo Digital & Re-treinar"}
              </button>
+             {marketMessage && <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">{marketMessage}</p>}
           </div>
 
           {/* Formulário Limpo */}
@@ -148,10 +183,15 @@ const CampaignSimulatorPage = () => {
                         <div>
                           <p className="text-3xl font-bold text-gray-900 dark:text-white">{formatCurrency(rec.amount)}</p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">{rec.type === 'subscription' ? 'per month' : 'one-time'}</p>
+                          {rec.kbsApplied && (
+                            <p className="mt-1 text-xs text-amber-600">Ajustado à faixa do tier (RL sugeriu {formatCurrency(rec.rawAmount)})</p>
+                          )}
                         </div>
                         <ul className="space-y-2">
-                          <li className="flex justify-between text-sm"><span className="text-gray-500">Est. Profit (SL)</span><span className="font-medium">{formatCurrency(rec.estimatedRevenue - formData.budget)}</span></li>
+                          <li className="flex justify-between text-sm"><span className="text-gray-500">Est. Profit (SL)</span><span className="font-medium">{formatCurrency(rec.estimatedProfit)}</span></li>
                           <li className="flex justify-between text-sm"><span className="text-gray-500">ROI</span><span className="font-medium">{rec.roi.toFixed(1)}%</span></li>
+                          <li className="flex justify-between text-sm"><span className="text-gray-500">VaR 5%</span><span className="font-medium">{formatCurrency(rec.var5)}</span></li>
+                          <li className="flex justify-between text-sm"><span className="text-gray-500">CVaR 5%</span><span className="font-medium">{formatCurrency(rec.cvar5)}</span></li>
                         </ul>
                       </div>
                     </div>

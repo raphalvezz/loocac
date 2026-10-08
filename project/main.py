@@ -12,7 +12,7 @@ import sys
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 # --- 1. Inicialização do App FastAPI (ISSO DEVE VIR PRIMEIRO) ---
 app = FastAPI(title="LOCAC API de Precificação")
@@ -42,15 +42,17 @@ class CampaignInput(BaseModel):
     Tipo_Produto: str = "InfoProduto"
     Modelo_Cobranca: str = "Venda Unica"
     Complexidade_Oferta: str = "Media"
-    # Features de Assinatura opcionais
-    dias_desde_ultima_interacao: float = 0.0
-    clv_estimate_percentile: float = 0.0
-    avg_price_offered_segment_90d: float = 0.0
-    price_volatility_30d: float = 0.0
+    # Features de Assinatura opcionais. Quando não enviadas, usa-se a média
+    # do treino (scaler_assinatura_memoria.mean_), que padronizada vira 0.
+    dias_desde_ultima_interacao: Optional[float] = None
+    clv_estimate_percentile: Optional[float] = None
+    avg_price_offered_segment_90d: Optional[float] = None
+    price_volatility_30d: Optional[float] = None
 
 class PredictionResponse(BaseModel):
     modelo: str
     preco_recomendado: float
+    preco_rl_bruto: float  # saída do agente antes da regra de faixa (KBS)
     lucro_estimado_sl: float
     var_5_percent: float
     cvar_5_percent: float
@@ -65,6 +67,34 @@ class MarketConfig(BaseModel):
     highMax: float
     budgetMin: float
     budgetMax: float
+
+# Faixas de preço por Tier (mesmos padrões do painel "Gêmeo Digital" da tela).
+# Se o painel já salvou um config_market.json, as faixas dele têm prioridade.
+DEFAULT_PRICE_RANGES = {
+    "Low Ticket": {"min": 10.0, "max": 97.0},
+    "High Ticket": {"min": 497.0, "max": 5000.0},
+}
+
+def get_price_range(tier: str) -> Dict[str, float]:
+    ranges = DEFAULT_PRICE_RANGES
+    try:
+        with open("config_market.json") as f:
+            ranges = {**ranges, **json.load(f).get("price_ranges", {})}
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    if tier not in ranges:
+        raise ValueError(f"Tier desconhecido: {tier}")
+    return ranges[tier]
+
+def apply_kbs(preco: float, tier: str):
+    """Regra de negócio (KBS): limita o preço à faixa do Tier.
+
+    Não corrige a política do RL; apenas impede preços fora da faixa
+    (ex.: negativos). Retorna (preço, se a regra alterou o valor).
+    """
+    faixa = get_price_range(tier)
+    limitado = float(np.clip(preco, faixa["min"], faixa["max"]))
+    return limitado, limitado != float(preco)
 
 # --- 4. Funcionalidades de Re-treino (Dinâmico) ---
 
@@ -177,6 +207,11 @@ def preprocess_input(input_data: CampaignInput, feature_type: str) -> np.ndarray
         colunas_estado = models_state["colunas_estado_assinatura"]
 
     input_dict = input_data.model_dump()
+    if feature_type == "assinatura":
+        # Memória ausente -> média do treino, para não sair da distribuição vista pelo modelo
+        for col, media in zip(scaler_memoria.feature_names_in_, scaler_memoria.mean_):
+            if input_dict.get(col) is None:
+                input_dict[col] = float(media)
     df = pd.DataFrame([input_dict])
 
     # Transformações
@@ -235,11 +270,15 @@ async def recommend_price(input_data: CampaignInput):
         
         # RL Prediction
         action_norm = models_state["cql_venda_unica"].predict(state_vector)[0]
-        preco_real = models_state["scaler_acao"].inverse_transform(action_norm.reshape(1, -1))[0][0]
+        preco_rl = models_state["scaler_acao"].inverse_transform(action_norm.reshape(1, -1))[0][0]
+
+        # KBS: limita à faixa do Tier; o risco é avaliado no preço efetivamente recomendado
+        preco_real, kbs_applied = apply_kbs(preco_rl, input_data.Tier)
+        action_kbs = models_state["scaler_acao"].transform([[preco_real]]).astype(np.float32)[0]
         
         # Risco (quantis do crítico QR)
         var_5, cvar_5 = compute_risk(
-            models_state["cql_venda_unica"], models_state["scaler_recompensa"], state_vector, action_norm
+            models_state["cql_venda_unica"], models_state["scaler_recompensa"], state_vector, action_kbs
         )
 
         # SL Prediction
@@ -248,6 +287,8 @@ async def recommend_price(input_data: CampaignInput):
         return PredictionResponse(
             modelo="RL (Venda Única) Dinâmico",
             preco_recomendado=float(preco_real),
+            preco_rl_bruto=float(preco_rl),
+            kbs_applied=kbs_applied,
             lucro_estimado_sl=float(lucro_sl),
             var_5_percent=float(var_5),
             cvar_5_percent=float(cvar_5),
@@ -264,10 +305,14 @@ async def recommend_subscription_price(input_data: CampaignInput):
         state_vector = preprocess_input(input_data, feature_type="assinatura")
         
         action_norm = models_state["cql_assinatura"].predict(state_vector)[0]
-        preco_real = models_state["scaler_assinatura_acao"].inverse_transform(action_norm.reshape(1, -1))[0][0]
+        preco_rl = models_state["scaler_assinatura_acao"].inverse_transform(action_norm.reshape(1, -1))[0][0]
+
+        # KBS: limita à faixa do Tier; o risco é avaliado no preço efetivamente recomendado
+        preco_real, kbs_applied = apply_kbs(preco_rl, input_data.Tier)
+        action_kbs = models_state["scaler_assinatura_acao"].transform([[preco_real]]).astype(np.float32)[0]
         
         var_5, cvar_5 = compute_risk(
-            models_state["cql_assinatura"], models_state["scaler_assinatura_recompensa"], state_vector, action_norm
+            models_state["cql_assinatura"], models_state["scaler_assinatura_recompensa"], state_vector, action_kbs
         )
         
         lucro_sl = predict_sl_profit(input_data, Modelo_Cobranca="Assinatura")
@@ -275,6 +320,8 @@ async def recommend_subscription_price(input_data: CampaignInput):
         return PredictionResponse(
             modelo="RL (Assinatura) LTV",
             preco_recomendado=float(preco_real),
+            preco_rl_bruto=float(preco_rl),
+            kbs_applied=kbs_applied,
             lucro_estimado_sl=float(lucro_sl),
             var_5_percent=float(var_5),
             cvar_5_percent=float(cvar_5),

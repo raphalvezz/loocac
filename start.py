@@ -7,8 +7,8 @@ import subprocess
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.join(ROOT_DIR, "project")
 REQUIRED_MODELS = [
-    "modelo_rl_final.pt",
-    "modelo_rl_assinatura.pt",
+    "modelo_rl_final.d3",
+    "modelo_rl_assinatura.d3",
     "sl_profit_regressor_model.joblib",
     "scaler_estado.joblib" # Verifica um scaler também para garantir
 ]

@@ -1,7 +1,21 @@
+# API
 fastapi
 uvicorn[standard]
-pandas
+httpx            # TestClient do FastAPI (testes)
+
+# Dados e modelos
 numpy
-d3rlpy==2.8.1
+pandas
+scikit-learn==1.7.2   # mesma versão usada para salvar os .joblib
+joblib
 torch
-scikit-learn
+d3rlpy==2.8.1
+lightgbm
+shap
+h5py
+tqdm
+
+# Pipeline de treino (train_pipeline.py executa os notebooks)
+jupyter
+nbconvert
+ipykernel
