@@ -5,8 +5,8 @@ critérios de sucesso do capítulo 5. Resultados que contrariem as hipóteses ta
 são reportados.
 
 > **Status: rascunho para revisão.** Os critérios da seção 6 e as decisões da
-> seção 9 precisam ser confirmados antes da primeira rodada com CQL. Depois disso,
-> qualquer mudança entra no histórico (seção 10) com justificativa.
+> seção 10 precisam ser confirmados antes da primeira rodada com CQL. Depois disso,
+> qualquer mudança entra no histórico (seção 11) com justificativa.
 
 ## 1. Simulador
 
@@ -14,7 +14,7 @@ são reportados.
 - Congelado pelos testes `tests/test_simulador.py` (valores de referência da
   economia e da geração de dados). Se um teste falhar, o simulador mudou.
 - Só se altera para corrigir um **erro**. Procedimento: subir `VERSAO`, atualizar
-  os valores de referência dos testes, registrar o motivo na seção 10 e refazer
+  os valores de referência dos testes, registrar o motivo na seção 11 e refazer
   todas as rodadas (os números de versões diferentes não se misturam).
 
 ## 2. Dados
@@ -45,7 +45,7 @@ Todas implementam `politicas.Politica` (`treinar(dados, semente)`, `precos(estad
 | `sl` (regressor do SL_FINAL + grade) | sim | estado |
 | `bandido` (LightGBM + grade, alvo em log) | sim | estado |
 | `cql` | sim | estado |
-| `oraculo_obs` | não | estado + função de lucro do simulador → **teto real** |
+| `oraculo_obs` | não | estado + função de lucro do simulador → **teto real** da métrica (maximiza o % do ótimo esperado entre os cenários que o estado não distingue) |
 | `oraculo` | não | cenário verdadeiro → **referência dos percentuais** |
 
 "Estado" é o mesmo para todas as políticas não privilegiadas e o avaliador remove a
@@ -102,16 +102,36 @@ circular (mesma distribuição no treino e no teste). Referência: o R² máximo
 possível com o ruído do simulador é ~0,95 (o lucro esperado sem ruído não
 passa disso), então R² perto de 0,95 não diferencia modelos.
 
-## 8. Custo e explicabilidade
+## 8. Bandido em operação (simulação online)
+
+`simular_bandido_online.py` (módulo `bandido.py`). O produto começa com poucos dados
+logados pela política aleatória (`--n-inicial` por cenário: 10 → 120 linhas, ou
+100 → 1.200 linhas) e passa a precificar sozinho:
+- 20 lotes de 600 decisões; estados sorteados da grade de avaliação, o MESMO fluxo
+  para todas as políticas;
+- o simulador devolve o lucro com ruído; as variantes em operação reajustam o
+  modelo a cada lote (como um reajuste diário);
+- métrica por decisão: % do ótimo (lucro esperado), como na seção 3.
+
+Variantes (hiperparâmetros fixados a priori): ε-greedy com ε = 0,2·0,85^lote
+(mínimo 0,02); Thompson por bootstrap com K = 5 modelos. Ambas usam o modelo do
+bandido offline. Referências no mesmo fluxo: bandido offline treinado só nos dados
+iniciais (congelado), bandido offline com o dataset completo (48 mil linhas),
+aleatório e `oraculo_obs`.
+
+Ganho de aprender em operação = variante − offline com os mesmos dados iniciais
+(pareado por semente, IC 95%), nos 5 últimos lotes e na média em operação.
+
+## 9. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),
 latência por recomendação (ms, CPU, média sobre os 144 estados), necessidade de
 GPU e grau de explicabilidade.
 
-## 9. Decisões em aberto antes da primeira rodada com CQL
+## 10. Decisões em aberto antes da primeira rodada com CQL
 
 1. **Observabilidade na venda única.** O estado não distingue os cenários 3/4 e
-   5/6, então o teto (`oraculo_obs`) no Low Ticket é ~67% do ótimo. Opções: incluir
+   5/6, então o teto (`oraculo_obs`) no Low Ticket é ~78% do ótimo. Opções: incluir
    um preço de referência do produto no estado (muda a API e a tela) ou manter e
    discutir como limitação.
 2. **Pouca folga quando o cenário é identificável.** Com a calibração atual,
@@ -121,7 +141,7 @@ GPU e grau de explicabilidade.
    ~3 p.p. Opções: ampliar a variação de contexto (simulador v1.1) ou manter e
    reportar que o problema tem pouca folga.
 
-## 10. Histórico
+## 11. Histórico
 
 | Versão | Data | Mudança | Motivo |
 |---|---|---|---|
@@ -133,6 +153,7 @@ GPU e grau de explicabilidade.
 |---|---|---|
 | 2026-10-08 | Bandido passa a usar alvo em log(lucro) | Decidido **depois** da primeira avaliação: em US$ ele ficava no piso da faixa no cenário 0. A política `sl` mantém o alvo em US$ e mostra o efeito dessa escolha. |
 | 2026-10-08 | `sl_dataset_combined.csv` passa a incluir as colunas de memória | O SL de LTV (assinatura) usa o mesmo estado do CQL. Os dados gerados não mudam. |
+| 2026-10-08 | `oraculo_obs` passa a maximizar o % do ótimo, não o lucro médio em US$ | Erro de definição: maximizando US$, o cenário de lucro maior dominava e uma política observável (ε-greedy) passou do "teto". Na venda única o teto sobe de 83,6% para 88,9% (Low: 67% → 78%). |
 
 ## Como reproduzir
 
@@ -141,6 +162,8 @@ cd project
 python -m pytest tests          # confirma que o simulador é o v1.0
 python avaliar_politicas.py     # 5 sementes; CQL incluído se o d3rlpy estiver instalado
 python avaliar_generalizacao.py # regiões e cenários fora do treino
+python simular_bandido_online.py --n-inicial 10   # bandido aprendendo em operação
+python figura_bandido_online.py
 ```
 
 Saídas em `resultados/`: `tabela_artigo.csv`, `comparacoes.csv`, `por_semente.csv`,

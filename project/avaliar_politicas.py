@@ -34,11 +34,15 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+import bandido as ban
 import politicas as pol
 import simulador as sim
 
 MODELOS = ['venda_unica', 'assinatura']
 TIERS = ['Low Ticket', 'High Ticket', 'Todos']
+# Políticas comparadas (as variantes do bandido em operação estão em simular_bandido_online.py)
+TODAS = [pol.Aleatoria, pol.MeioFaixa, pol.MaximoFaixa, pol.SL, ban.BandidoLGBM, pol.CQL,
+         pol.OraculoObservavel, pol.Oraculo]
 SEMENTES_PADRAO = [42, 43, 44, 45, 46]
 # Comparações pareadas fixadas no protocolo (A - B)
 COMPARACOES = [('cql', 'aleatorio'), ('cql', 'meio_faixa'), ('cql', 'sl'), ('cql', 'bandido'),
@@ -108,7 +112,7 @@ def ic95(valores):
 
 
 def construir_politicas(modelo, cenarios, args):
-    classes = [c for c in pol.TODAS if not (c is pol.CQL and args.sem_cql)]
+    classes = [c for c in TODAS if not (c is pol.CQL and args.sem_cql)]
     out = []
     for cls in classes:
         if cls is pol.CQL:

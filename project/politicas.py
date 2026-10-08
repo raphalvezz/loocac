@@ -29,6 +29,20 @@ MEMORIA = ['dias_desde_ultima_interacao', 'clv_estimate_percentile',
            'avg_price_offered_segment_90d', 'price_volatility_30d']
 ALVO = {'venda_unica': 'Lucro_Real', 'assinatura': 'LTV_Real'}
 FRACAO_TREINO = 0.8  # mesmo split 80/20 dos notebooks (dados embaralhados)
+COLUNAS_ESTADO = CATEGORICAS + ['Orcamento'] + MEMORIA
+
+
+def por_estado_unico(funcao, estados):
+    """Aplica funcao(estados_unicos) -> preços e devolve um preço por linha de `estados`.
+
+    Um lote de decisões repete os mesmos estados (a grade tem 144); prever só os
+    distintos dá o mesmo resultado com muito menos custo. Só para políticas
+    determinísticas por estado.
+    """
+    colunas = [c for c in COLUNAS_ESTADO + ['Cenario'] if c in estados.columns]
+    codigos, _ = pd.factorize(pd.MultiIndex.from_frame(estados[colunas].astype(str)))
+    primeiras = pd.Series(range(len(codigos))).groupby(codigos).first().to_numpy()
+    return np.asarray(funcao(estados.iloc[primeiras].reset_index(drop=True)))[codigos]
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +138,8 @@ class RegressorGrade(Politica):
     preço de maior lucro previsto numa grade dentro da faixa observável.
 
     Offline e sem exploração, um bandido contextual guloso É isto; SL e bandido
-    diferem só na configuração (alvo, escala das features, hiperparâmetros).
+    (bandido.py) diferem só na configuração (alvo, escala das features,
+    hiperparâmetros).
     """
     treinavel = True
     explicabilidade = 'alta: curva de lucro prevista por preço; importância/SHAP por feature'
@@ -168,6 +183,9 @@ class RegressorGrade(Politica):
         return np.exp(pred) if self.escala_log else pred
 
     def precos(self, estados):
+        return por_estado_unico(self._precos, estados)
+
+    def _precos(self, estados):
         n = self.n_grade
         # Grade só dentro da faixa observável: fora dela não há dados e as árvores extrapolam
         grades = np.stack([np.geomspace(lo, hi, n) for lo, hi in self.faixas(estados)])
@@ -187,16 +205,6 @@ class SL(RegressorGrade):
     nome = 'sl'
     parametros = {'n_estimators': 200, 'learning_rate': 0.1, 'num_leaves': 31}
     escala_log = False
-
-
-class BandidoLGBM(RegressorGrade):
-    """Alvo em log(lucro): os lucros vão de centenas (Low Ticket, orçamento 100) a
-    milhões (High Ticket); em escala bruta o erro quadrático ignora os cenários
-    pequenos. O lucro é positivo em todas as faixas, então o argmax não muda.
-    (Decisão tomada depois da primeira avaliação; ver protocolo, seção 9.)"""
-    nome = 'bandido'
-    parametros = {'n_estimators': 300, 'learning_rate': 0.05, 'num_leaves': 63}
-    escala_log = True
 
 
 # ---------------------------------------------------------------------------
@@ -305,18 +313,26 @@ def _cuda():
 # Referências (privilegiadas)
 # ---------------------------------------------------------------------------
 class OraculoObservavel(Politica):
-    """Melhor preço possível sabendo só o estado: maximiza o lucro médio entre os
-    cenários que o estado não distingue. É o teto real de qualquer política."""
+    """Melhor preço possível sabendo só o estado: maximiza a MÉTRICA (% do lucro
+    ótimo), em média entre os cenários que o estado não distingue (pesos iguais,
+    como nos dados). É o teto real de qualquer política nessa métrica.
+
+    Maximizar o lucro médio em US$ não serve: o cenário de lucro maior domina e o
+    resultado deixa de ser teto para a média de % do ótimo."""
     nome = 'oraculo_obs'
     privilegiada = True  # conhece a função de lucro do simulador
     explicabilidade = 'referência (usa o simulador)'
 
-    def precos(self, estados, n=2001):
+    def precos(self, estados):
+        return por_estado_unico(self._precos, estados)
+
+    def _precos(self, estados, n=2001):
         out = []
         for chave, r in zip(chaves(self.modelo, estados), estados.itertuples()):
             grupo = [c for c in self.cenarios if chave_cenario(self.modelo, c) == chave]
             grade = np.geomspace(*self.catalogo[chave], n)
             media = np.mean([sim.lucro_esperado(grade, c, r.Regiao, r.Plataforma, self.modelo)
+                             / sim.preco_otimo(c, r.Regiao, r.Plataforma, self.modelo)[1]
                              for c in grupo], axis=0)
             out.append(float(grade[np.argmax(media)]))
         return np.array(out)
@@ -329,8 +345,6 @@ class Oraculo(Politica):
     explicabilidade = 'referência (usa o simulador e o cenário verdadeiro)'
 
     def precos(self, estados):
-        return np.array([sim.preco_otimo(self.cenarios[r.Cenario], r.Regiao, r.Plataforma, self.modelo)[0]
-                         for r in estados.itertuples()])
+        return por_estado_unico(lambda e: [sim.preco_otimo(self.cenarios[r.Cenario], r.Regiao, r.Plataforma,
+                                                            self.modelo)[0] for r in e.itertuples()], estados)
 
-
-TODAS = [Aleatoria, MeioFaixa, MaximoFaixa, SL, BandidoLGBM, CQL, OraculoObservavel, Oraculo]

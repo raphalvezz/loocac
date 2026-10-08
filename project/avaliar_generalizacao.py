@@ -26,10 +26,11 @@ import pandas as pd
 from sklearn.metrics import r2_score
 
 import avaliar_politicas as av
+import bandido as ban
 import politicas as pol
 import simulador as sim
 
-POLITICAS = [pol.SL, pol.BandidoLGBM]
+POLITICAS = [pol.SL, ban.BandidoLGBM]
 
 
 def pct_otimo(politica, estados, cenarios, modelo):

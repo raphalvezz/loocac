@@ -1,7 +1,9 @@
 import numpy as np
+import pandas as pd
 import pytest
 
 import avaliar_politicas as av
+import bandido as ban
 import politicas as pol
 import simulador as sim
 
@@ -41,14 +43,19 @@ def test_chave_estado():
 def test_oraculos_sao_tetos(modelo, estados):
     otimo = av.lucros(av.consultar(pol.Oraculo(modelo, C), estados), estados, C, modelo)
     obs = av.lucros(av.consultar(pol.OraculoObservavel(modelo, C), estados), estados, C, modelo)
-    meio = av.lucros(av.consultar(pol.MeioFaixa(modelo, C), estados), estados, C, modelo)
     assert np.all(obs <= otimo * (1 + 1e-9))
-    assert np.mean(meio / otimo) <= np.mean(obs / otimo) + 1e-9
+    # Teto da métrica: em cada grupo de estados indistinguíveis, nenhum preço único
+    # passa do oraculo_obs em % médio do ótimo
+    grupos = pd.Series(list(zip(pol.chaves(modelo, estados), estados['Regiao'], estados['Plataforma'])))
+    for cls in [pol.MeioFaixa, pol.MaximoFaixa]:
+        v = av.lucros(av.consultar(cls(modelo, C), estados), estados, C, modelo)
+        assert np.all(pd.Series(v / otimo).groupby(grupos).mean().to_numpy()
+                      <= pd.Series(obs / otimo).groupby(grupos).mean().to_numpy() + 1e-6)
 
 
 def test_bandido_aprende(estados):
     dados = sim.gerar_dados(C, 1000, 42)
-    b = pol.BandidoLGBM('venda_unica', C)
+    b = ban.BandidoLGBM('venda_unica', C)
     b.treinar(dados, 42)
     otimo = av.lucros(av.consultar(pol.Oraculo('venda_unica', C), estados), estados, C, 'venda_unica')
     pct = np.mean(av.lucros(av.consultar(b, estados), estados, C, 'venda_unica') / otimo)

@@ -40,6 +40,9 @@ def run_pipeline():
         "2. Treinando Modelo Supervisionado (SL)"
     )
 
+    # 2b. Treinar e exportar o bandido contextual (referência do RL)
+    run_command(f"{sys.executable} treinar_bandido.py", "2b. Treinando Bandido Contextual (LightGBM)")
+
     # 3. Treinar RL Fixo
     run_command(
         f"{sys.executable} -m jupyter nbconvert --to notebook --execute --inplace \"{NOTEBOOK_RL_FIXO}\"", 
