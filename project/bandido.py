@@ -28,7 +28,7 @@ class BandidoLGBM(RegressorGrade):
     """Alvo em log(lucro): os lucros vão de centenas (Low Ticket, orçamento 100) a
     milhões (High Ticket); em escala bruta o erro quadrático ignora os cenários
     pequenos. O lucro é positivo em todas as faixas, então o argmax não muda.
-    (Decisão tomada depois da primeira avaliação; ver protocolo, seção 11.)"""
+    (Decisão tomada depois da primeira avaliação; ver protocolo, seção 12.)"""
     nome = 'bandido'
     parametros = {'n_estimators': 300, 'learning_rate': 0.05, 'num_leaves': 63}
     escala_log = True

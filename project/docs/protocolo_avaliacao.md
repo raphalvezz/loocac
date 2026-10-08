@@ -5,8 +5,8 @@ critérios de sucesso do capítulo 5. Resultados que contrariem as hipóteses ta
 são reportados.
 
 > **Status: rascunho para revisão.** Os critérios da seção 6 e as decisões da
-> seção 10 precisam ser confirmados antes da primeira rodada com CQL. Depois disso,
-> qualquer mudança entra no histórico (seção 11) com justificativa.
+> seção 11 precisam ser confirmados antes da primeira rodada com CQL. Depois disso,
+> qualquer mudança entra no histórico (seção 12) com justificativa.
 
 ## 1. Simulador
 
@@ -14,7 +14,7 @@ são reportados.
 - Congelado pelos testes `tests/test_simulador.py` (valores de referência da
   economia e da geração de dados). Se um teste falhar, o simulador mudou.
 - Só se altera para corrigir um **erro**. Procedimento: subir `VERSAO`, atualizar
-  os valores de referência dos testes, registrar o motivo na seção 11 e refazer
+  os valores de referência dos testes, registrar o motivo na seção 12 e refazer
   todas as rodadas (os números de versões diferentes não se misturam).
 
 ## 2. Dados
@@ -122,13 +122,29 @@ aleatório e `oraculo_obs`.
 Ganho de aprender em operação = variante − offline com os mesmos dados iniciais
 (pareado por semente, IC 95%), nos 5 últimos lotes e na média em operação.
 
-## 9. Custo e explicabilidade
+## 9. Ablações do CQL e diagnóstico do Low Ticket (seção 5.6)
+
+`ablacoes_cql.py`: treino curto (5.000 passos, seleção pelo lucro simulado),
+3 sementes, uma alteração por vez em relação à configuração dos notebooks:
+peso conservador (0,5 / 20), ação sem escala por Tier (faixa global), γ = 0,98
+com transições independentes, recompensa em log e por estado, e ação na faixa
+observável do estado (com e sem recompensa por estado).
+
+`diagnostico_cql.py`: compara, por tier, o preço do ator, o argmax do crítico
+e o oráculo observável, e desenha o crítico contra o lucro verdadeiro num
+estado Low Ticket.
+
+Resultados em `resultados/ablacoes_cql*.csv`, `resultados/diagnostico_cql.csv`
+e `docs/figuras/diagnostico_cql_low_ticket.png`. São de treino curto: servem
+para comparar configurações entre si, não como resultado final do CQL.
+
+## 10. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),
 latência por recomendação (ms, CPU, média sobre os 144 estados), necessidade de
 GPU e grau de explicabilidade.
 
-## 10. Decisões em aberto antes da primeira rodada com CQL
+## 11. Decisões em aberto antes da primeira rodada com CQL
 
 1. **Observabilidade na venda única.** O estado não distingue os cenários 3/4 e
    5/6, então o teto (`oraculo_obs`) no Low Ticket é ~78% do ótimo. Opções: incluir
@@ -140,8 +156,15 @@ GPU e grau de explicabilidade.
    então a diferença máxima entre qualquer política aprendida e a regra fixa é de
    ~3 p.p. Opções: ampliar a variação de contexto (simulador v1.1) ou manter e
    reportar que o problema tem pouca folga.
+3. **Escala da ação do CQL.** As ablações (seção 9) mostram que, com a ação na
+   faixa do Tier, o crítico extrapola para preços que o estado nunca viu e o
+   ator fica entre duas modas; com a ação na faixa observável do estado, o CQL
+   passa de ~61% para ~85% do ótimo na venda única e de ~81% para ~98% na
+   assinatura (treino curto). Adotar `escala_acao='estado'` como padrão no treino
+   completo é uma decisão tomada depois de ver resultados: precisa constar como
+   desvio (seção 12) e mudar também a API e os notebooks.
 
-## 11. Histórico
+## 12. Histórico
 
 | Versão | Data | Mudança | Motivo |
 |---|---|---|---|
