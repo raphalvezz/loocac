@@ -17,6 +17,8 @@ Ticket, a dispersão dos preços escolhidos e a correlação (log) com o preço 
 oráculo observável — se a política só repete um preço, a dispersão é ~0.
 
 Saídas: resultados/ablacoes_cql.csv (por semente) e resultados/ablacoes_cql_resumo.csv
+O CSV por semente é gravado a cada execução concluída; rodar de novo retoma de
+onde parou (pula config x modelo x semente já presentes).
 Uso:    python ablacoes_cql.py [--sementes 3] [--passos 5000] [--processos 2]
 """
 
@@ -80,18 +82,25 @@ def main():
     args = ap.parse_args()
 
     threads = max(1, (os.cpu_count() or 2) // args.processos)
+    os.makedirs(args.saida, exist_ok=True)
+    caminho = os.path.join(args.saida, 'ablacoes_cql.csv')
+    feitas = set()
+    if os.path.exists(caminho):
+        anteriores = pd.read_csv(caminho)
+        feitas = set(zip(anteriores['config'], anteriores['modelo'], anteriores['semente']))
     tarefas = [(c, m, s, args.passos, threads) for s in range(42, 42 + args.sementes)
-               for c in args.configs for m in ['venda_unica', 'assinatura']]
-    linhas = []
+               for c in args.configs for m in ['venda_unica', 'assinatura'] if (c, m, s) not in feitas]
+    print(f"{len(tarefas)} execuções a fazer ({len(feitas)} já no CSV)")
     with ProcessPoolExecutor(max_workers=args.processos) as ex:
         for r in ex.map(rodar, tarefas):
-            linhas.append(r)
+            pd.DataFrame([r]).to_csv(caminho, mode='a', header=not os.path.exists(caminho), index=False)
             print(f"{r['config']:18s} {r['modelo']:12s} s{r['semente']}  Low {r['pct_low']:5.1f}%  "
                   f"High {r['pct_high']:5.1f}%  preços Low {r['low_preco_min']:.0f}-{r['low_preco_max']:.0f}  "
                   f"({r['tempo_s']:.0f}s)", flush=True)
 
     import avaliar_politicas as av
-    det = pd.DataFrame(linhas)
+    det = pd.read_csv(caminho)
+    det = det[det['config'].isin(args.configs)]
     resumo = []
     for (cfg, modelo), g in det.groupby(['config', 'modelo'], sort=False):
         linha = {'config': cfg, 'modelo': modelo, 'n_sementes': len(g)}
@@ -100,8 +109,6 @@ def main():
             linha.update({col: m, f'{col}_ic95_inf': lo, f'{col}_ic95_sup': hi})
         linha.update({c: g[c].mean() for c in ['low_dispersao_log', 'low_corr_oraculo_obs', 'tempo_s']})
         resumo.append(linha)
-    os.makedirs(args.saida, exist_ok=True)
-    det.to_csv(os.path.join(args.saida, 'ablacoes_cql.csv'), index=False)
     pd.DataFrame(resumo).to_csv(os.path.join(args.saida, 'ablacoes_cql_resumo.csv'), index=False)
     with pd.option_context('display.float_format', '{:,.2f}'.format, 'display.width', 160):
         print(pd.DataFrame(resumo)[['config', 'modelo', 'pct_low', 'pct_high', 'pct_todos',

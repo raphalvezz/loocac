@@ -303,7 +303,7 @@ class CQL(Politica):
         with tempfile.TemporaryDirectory() as tmp:
             caminho = os.path.join(tmp, 'melhor.pt')
             for _, _ in self.algo.fitter(buffer, n_steps=self.n_passos,
-                                         n_steps_per_epoch=self.passos_por_epoca,
+                                         n_steps_per_epoch=min(self.passos_por_epoca, self.n_passos),
                                          logger_adapter=d3rlpy.logging.NoopAdapterFactory(),
                                          show_progress=False):
                 score = self.avaliador(self) if self.avaliador else 0.0
