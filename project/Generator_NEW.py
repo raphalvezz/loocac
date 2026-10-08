@@ -83,8 +83,8 @@ numeric_features_memoria = ['dias_desde_ultima_interacao', 'clv_estimate_percent
                             'avg_price_offered_segment_90d', 'price_volatility_30d']
 
 # --- 3.1 SL ---
-# LTV_Real fica no CSV para o baseline de bandido da assinatura (avaliar_politicas.py)
-df.drop(columns=numeric_features_memoria).to_csv('sl_dataset_combined.csv', index=False)
+# Dataset completo: LTV_Real e memória servem ao SL/bandido da assinatura (mesmo estado do CQL)
+df.to_csv('sl_dataset_combined.csv', index=False)
 
 ohe = OneHotEncoder(handle_unknown='ignore', sparse_output=False).fit(df[categorical_features])
 scaler_state = StandardScaler().fit(df[numeric_features_base])

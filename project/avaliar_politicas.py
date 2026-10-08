@@ -41,8 +41,9 @@ MODELOS = ['venda_unica', 'assinatura']
 TIERS = ['Low Ticket', 'High Ticket', 'Todos']
 SEMENTES_PADRAO = [42, 43, 44, 45, 46]
 # Comparações pareadas fixadas no protocolo (A - B)
-COMPARACOES = [('cql', 'aleatorio'), ('cql', 'meio_faixa'), ('cql', 'bandido'),
-               ('bandido', 'aleatorio'), ('bandido', 'meio_faixa')]
+COMPARACOES = [('cql', 'aleatorio'), ('cql', 'meio_faixa'), ('cql', 'sl'), ('cql', 'bandido'),
+               ('sl', 'aleatorio'), ('sl', 'meio_faixa'),
+               ('bandido', 'aleatorio'), ('bandido', 'meio_faixa'), ('bandido', 'sl')]
 
 
 def carregar_cenarios():

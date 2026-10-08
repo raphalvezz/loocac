@@ -40,7 +40,7 @@ class CampaignInput(BaseModel):
     Idade: str
     Genero: str
     Conteudo: str
-    # Exigidos pelos encoders (ohe_encoder / sl_ohe_encoder)
+    # Exigidos pelos encoders do estado
     Tipo_Produto: str = "InfoProduto"
     Modelo_Cobranca: str = "Venda Unica"
     Complexidade_Oferta: str = "Media"
@@ -151,7 +151,7 @@ async def load_models():
         "cql_venda_unica": "modelo_rl_final.d3",
         "cql_assinatura": "modelo_rl_assinatura.d3",
         "sl_profit": "sl_profit_regressor_model.joblib",
-        "sl_ohe": "sl_ohe_encoder.joblib",
+        "sl_ltv": "sl_ltv_regressor_model.joblib",
         "ohe": "ohe_encoder.joblib",
         "scaler_estado": "scaler_estado.joblib",
         "faixas_tier": "faixas_tier.json",
@@ -181,7 +181,7 @@ async def load_models():
         models_state["scaler_assinatura_recompensa"] = joblib.load(artifact_paths["scaler_assinatura_recompensa"])
 
         # Carrega Modelos
-        models_state["sl_ohe"] = joblib.load(artifact_paths["sl_ohe"])
+        models_state["sl_ltv"] = joblib.load(artifact_paths["sl_ltv"])
         models_state["sl_profit"] = joblib.load(artifact_paths["sl_profit"])
         models_state["cql_venda_unica"] = d3rlpy.load_learnable(artifact_paths["cql_venda_unica"], device="cpu")
         models_state["cql_assinatura"] = d3rlpy.load_learnable(artifact_paths["cql_assinatura"], device="cpu")
@@ -196,6 +196,17 @@ async def load_models():
         print(f"❌ ERRO FATAL inesperado: {e}")
 
 # --- 6. Função de Pré-processamento ---
+def estado_df(input_data: CampaignInput, feature_type: str) -> pd.DataFrame:
+    """Estado em uma linha de DataFrame (entrada comum ao RL e ao SL)."""
+    input_dict = input_data.model_dump()
+    if feature_type == "assinatura":
+        # Memória ausente -> média do treino, para não sair da distribuição vista pelo modelo
+        scaler_memoria = models_state["scaler_assinatura_memoria"]
+        for col, media in zip(scaler_memoria.feature_names_in_, scaler_memoria.mean_):
+            if input_dict.get(col) is None:
+                input_dict[col] = float(media)
+    return pd.DataFrame([input_dict])
+
 def preprocess_input(input_data: CampaignInput, feature_type: str) -> np.ndarray:
     if "ohe" not in models_state:
         raise ValueError("Modelos não carregados. Configure o mercado primeiro.")
@@ -208,13 +219,7 @@ def preprocess_input(input_data: CampaignInput, feature_type: str) -> np.ndarray
         scaler_memoria = models_state["scaler_assinatura_memoria"]
         colunas_estado = models_state["colunas_estado_assinatura"]
 
-    input_dict = input_data.model_dump()
-    if feature_type == "assinatura":
-        # Memória ausente -> média do treino, para não sair da distribuição vista pelo modelo
-        for col, media in zip(scaler_memoria.feature_names_in_, scaler_memoria.mean_):
-            if input_dict.get(col) is None:
-                input_dict[col] = float(media)
-    df = pd.DataFrame([input_dict])
+    df = estado_df(input_data, feature_type)
 
     # Transformações
     categorical_cols = ohe.feature_names_in_
@@ -255,12 +260,13 @@ def compute_risk(algo, scaler_recompensa, obs: np.ndarray, act: np.ndarray):
     cvar_5 = quantis_reais[quantis_reais <= var_5].mean()
     return var_5, cvar_5
 
-def predict_sl_profit(input_data: CampaignInput, **overrides) -> float:
-    """Lucro previsto pelo regressor SL, usando o mesmo encoder do treino (sl_ohe_encoder)."""
-    enc = models_state["sl_ohe"]
-    df = pd.DataFrame([{**input_data.model_dump(), **overrides}])
-    X_sl = enc.transform(df[list(enc.feature_names_in_)])
-    return models_state["sl_profit"].predict(X_sl)[0]
+def predict_sl_profit(input_data: CampaignInput, preco: float, feature_type: str) -> float:
+    """Lucro (venda única) ou LTV (assinatura) previsto pelo SL no preço recomendado.
+
+    Os .joblib são objetos politicas.SL (encoder + LightGBM), salvos pelo SL_FINAL.
+    """
+    sl = models_state["sl_ltv" if feature_type == "assinatura" else "sl_profit"]
+    return float(sl.prever_lucro(estado_df(input_data, feature_type), [preco])[0])
 
 # --- 7. Endpoints de Inferência ---
 
@@ -286,7 +292,7 @@ async def recommend_price(input_data: CampaignInput):
         )
 
         # SL Prediction
-        lucro_sl = predict_sl_profit(input_data)
+        lucro_sl = predict_sl_profit(input_data, preco_real, "venda_unica")
 
         return PredictionResponse(
             modelo="RL (Venda Única) Dinâmico",
@@ -321,7 +327,7 @@ async def recommend_subscription_price(input_data: CampaignInput):
             models_state["cql_assinatura"], models_state["scaler_assinatura_recompensa"], state_vector, action_kbs
         )
         
-        lucro_sl = predict_sl_profit(input_data, Modelo_Cobranca="Assinatura")
+        lucro_sl = predict_sl_profit(input_data, preco_real, "assinatura")
 
         return PredictionResponse(
             modelo="RL (Assinatura) LTV",

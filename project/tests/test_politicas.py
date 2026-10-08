@@ -62,3 +62,18 @@ def test_ic95():
     media, lo, hi = av.ic95([1.0, 2.0, 3.0])
     assert media == 2.0 and lo < 2.0 < hi
     assert av.ic95([5.0]) == (5.0, 5.0, 5.0)
+
+
+@pytest.mark.parametrize("modelo", ['venda_unica', 'assinatura'])
+def test_sl_prever_lucro_e_joblib(modelo, estados, tmp_path):
+    import joblib
+    dados = sim.gerar_dados(C, 300, 1)
+    sl = pol.SL(modelo, C).treinar(dados, 1)
+    lucro = sl.prever_lucro(estados, np.full(len(estados), 50.0))
+    assert lucro.shape == (len(estados),) and np.isfinite(lucro).all()
+    # A API carrega o objeto inteiro (encoder + LightGBM) do .joblib
+    caminho = tmp_path / 'sl.joblib'
+    joblib.dump(sl, caminho)
+    assert np.allclose(joblib.load(caminho).prever_lucro(estados, np.full(len(estados), 50.0)), lucro)
+    precos = av.consultar(sl, estados)
+    assert all(lo <= p <= hi for p, (lo, hi) in zip(precos, sl.faixas(estados)))

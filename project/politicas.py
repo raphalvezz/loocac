@@ -117,37 +117,55 @@ class MaximoFaixa(Politica):
 
 
 # ---------------------------------------------------------------------------
-# Bandido contextual: LightGBM (estado + log-preço -> lucro) + busca em grade
+# Regressor de lucro + busca em grade (SL e bandido contextual)
 # ---------------------------------------------------------------------------
-class BandidoLGBM(Politica):
-    """Alvo em log(lucro): os lucros vão de centenas (Low Ticket, orçamento 100) a
-    milhões (High Ticket); em escala bruta o erro quadrático ignora os cenários
-    pequenos. O lucro é positivo em todas as faixas, então o argmax não muda."""
-    nome = 'bandido'
+class RegressorGrade(Politica):
+    """Aprende lucro(estado, preço) com LightGBM e, para cada estado, escolhe o
+    preço de maior lucro previsto numa grade dentro da faixa observável.
+
+    Offline e sem exploração, um bandido contextual guloso É isto; SL e bandido
+    diferem só na configuração (alvo, escala das features, hiperparâmetros).
+    """
     treinavel = True
     explicabilidade = 'alta: curva de lucro prevista por preço; importância/SHAP por feature'
+    parametros = {}
+    escala_log = False  # alvo e features numéricas em log
 
     def __init__(self, modelo, cenarios, n_grade=200):
         super().__init__(modelo, cenarios)
         self.n_grade = n_grade
 
+    def nomes_features(self):
+        nomes = list(self.ohe.get_feature_names_out()) + ['Orcamento']
+        if self.modelo == 'assinatura':
+            nomes += MEMORIA
+        return nomes + ['Preco']
+
     def _X(self, estados, preco):
+        f = np.log if self.escala_log else np.asarray
         # Mesmo estado que o CQL vê: na assinatura, inclui as features de memória
         partes = [self.ohe.transform(estados[CATEGORICAS]),
-                  np.log(estados[['Orcamento']].to_numpy(dtype=float))]
+                  f(estados[['Orcamento']].to_numpy(dtype=float))]
         if self.modelo == 'assinatura':
             partes.append(estados[MEMORIA].to_numpy(dtype=float))
-        partes.append(np.log(np.asarray(preco, dtype=float)).reshape(-1, 1))
+        partes.append(f(np.asarray(preco, dtype=float)).reshape(-1, 1))
         return np.column_stack(partes)
 
-    def treinar(self, dados, semente):
+    def treinar(self, dados, semente, fracao_treino=FRACAO_TREINO):
         import lightgbm as lgb
-        treino = dados.iloc[: int(len(dados) * FRACAO_TREINO)]
+        treino = dados.iloc[: int(len(dados) * fracao_treino)]
         self.ohe = OneHotEncoder(handle_unknown='ignore', sparse_output=False).fit(treino[CATEGORICAS])
-        self.lgb = lgb.LGBMRegressor(n_estimators=300, learning_rate=0.05, num_leaves=63,
-                                     random_state=semente, verbose=-1)
-        alvo = np.log(np.maximum(treino[ALVO[self.modelo]].to_numpy(), 1e-6))
+        self.lgb = lgb.LGBMRegressor(**self.parametros, random_state=semente, verbose=-1)
+        alvo = treino[ALVO[self.modelo]].to_numpy()
+        if self.escala_log:
+            alvo = np.log(np.maximum(alvo, 1e-6))
         self.lgb.fit(self._X(treino, treino['Preco_Amostra'].to_numpy()), alvo)
+        return self
+
+    def prever_lucro(self, estados, precos):
+        """Lucro previsto (US$) para cada par (estado, preço)."""
+        pred = self.lgb.predict(self._X(estados, precos))
+        return np.exp(pred) if self.escala_log else pred
 
     def precos(self, estados):
         n = self.n_grade
@@ -156,6 +174,29 @@ class BandidoLGBM(Politica):
         rep = estados.loc[estados.index.repeat(n)].reset_index(drop=True)
         pred = self.lgb.predict(self._X(rep, grades.ravel())).reshape(len(estados), n)
         return grades[np.arange(len(estados)), pred.argmax(axis=1)]
+
+
+class SL(RegressorGrade):
+    """O regressor do SL_FINAL usado como política.
+
+    Mesmos hiperparâmetros e alvo em US$ do notebook. Em relação à versão
+    original (só categóricas), ganha Orçamento e Preço como features: sem o
+    preço não há como escolher preço, e sem o orçamento o modelo não separa
+    cenários do mesmo Tier.
+    """
+    nome = 'sl'
+    parametros = {'n_estimators': 200, 'learning_rate': 0.1, 'num_leaves': 31}
+    escala_log = False
+
+
+class BandidoLGBM(RegressorGrade):
+    """Alvo em log(lucro): os lucros vão de centenas (Low Ticket, orçamento 100) a
+    milhões (High Ticket); em escala bruta o erro quadrático ignora os cenários
+    pequenos. O lucro é positivo em todas as faixas, então o argmax não muda.
+    (Decisão tomada depois da primeira avaliação; ver protocolo, seção 9.)"""
+    nome = 'bandido'
+    parametros = {'n_estimators': 300, 'learning_rate': 0.05, 'num_leaves': 63}
+    escala_log = True
 
 
 # ---------------------------------------------------------------------------
@@ -292,4 +333,4 @@ class Oraculo(Politica):
                          for r in estados.itertuples()])
 
 
-TODAS = [Aleatoria, MeioFaixa, MaximoFaixa, BandidoLGBM, CQL, OraculoObservavel, Oraculo]
+TODAS = [Aleatoria, MeioFaixa, MaximoFaixa, SL, BandidoLGBM, CQL, OraculoObservavel, Oraculo]
