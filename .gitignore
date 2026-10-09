@@ -9,3 +9,5 @@ __pycache__/
 *.d3
 *.pt
 project/d3rlpy_logs/
+.env.local
+.env.*.local
