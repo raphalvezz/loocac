@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Compass, TrendingUp, Users, Filter, X } from 'lucide-react';
+import { Search, Compass, TrendingUp, Users, Filter, X, User } from 'lucide-react';
 import { Post } from '../types/post';
 import PostCard from '../components/posts/PostCard';
 
@@ -7,6 +7,14 @@ interface Category {
   id: string;
   name: string;
   icon: React.ReactNode;
+}
+
+interface PersonToFollow {
+  id: string;
+  name: string;
+  userType: string;
+  followers: number;
+  profileImage?: string;
 }
 
 interface Topic {
@@ -20,7 +28,7 @@ const ExploreDiscoverPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [trendingPosts, setTrendingPosts] = useState<Post[]>([]);
   const [trendingTopics, setTrendingTopics] = useState<Topic[]>([]);
-  const [peopleToFollow, setPeopleToFollow] = useState<any[]>([]);
+  const [peopleToFollow, setPeopleToFollow] = useState<PersonToFollow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     userType: '',

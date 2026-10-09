@@ -19,6 +19,8 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // parâmetros com _ são intencionalmente não usados (ex.: login simulado)
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },

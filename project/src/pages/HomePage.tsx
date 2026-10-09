@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { useUser } from '../contexts/UserContext';
 import PostCreationCard from '../components/posts/PostCreationCard';
 import PostCard from '../components/posts/PostCard';
 import { Post } from '../types/post';
 
 const HomePage: React.FC = () => {
-  const { user } = useUser();
   const [posts, setPosts] = useState<Post[]>([
     {
       id: 'post1',
