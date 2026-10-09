@@ -11,3 +11,20 @@ __pycache__/
 project/d3rlpy_logs/
 .env.local
 .env.*.local
+
+# Dependências do front (npm install / npm ci recria)
+node_modules/
+
+# Artefatos gerados pelo pipeline (project/docs/artefatos.md); só os resultados
+# em project/resultados/ e as figuras em project/docs/figuras/ são versionados
+project/*.joblib
+project/*.h5
+project/sl_dataset_combined.csv
+project/colunas_estado_*.json
+project/cenarios_treino.json
+project/faixas_tier.json
+project/data_manifest.json
+project/config_market.json
+models/
+data/
+*.lnk
