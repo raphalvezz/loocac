@@ -28,3 +28,5 @@ project/config_market.json
 models/
 data/
 *.lnk
+project/colunas_observacao.json
+project/config_orcamento.json
