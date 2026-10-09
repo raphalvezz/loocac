@@ -1,12 +1,8 @@
 import pandas as pd
 import numpy as np
-import joblib
-import d3rlpy
-import json
-import os
 import warnings
 
-import simulador as sim
+import politicas as pol
 
 # Suprime avisos de versões
 warnings.filterwarnings('ignore')
@@ -47,72 +43,23 @@ BASE_CONFIG = {
     'Complexidade_Oferta': 'Media'
 }
 
-# --- 2. CARREGAR O CÉREBRO (Artefatos) ---
-print("Carregando modelos...", end=" ")
+# --- 2. CARREGAR O AGENTE (versão canônica: treinar_cql.py) ---
+print("Carregando modelo...", end=" ")
 try:
-    # Scalers
-    ohe = joblib.load("ohe_encoder.joblib")
-    scaler_state = joblib.load("scaler_estado.joblib")
-    with open("faixas_tier.json") as f:
-        faixas_tier = json.load(f)  # ação [-1, 1] -> faixa do Tier (simulador.py)
-    scaler_reward = joblib.load("scaler_recompensa.joblib")
-    
-    # Modelo Treinado
-    cql = d3rlpy.load_learnable("modelo_rl_final.d3", device="cpu")
-    
-    # Metadados das colunas
-    with open('colunas_estado_base.json', 'r') as f:
-        colunas_ordenadas = json.load(f)
-        
+    cql = pol.CQL.carregar("cql_venda_unica")
     print("✅ Sucesso!")
 except Exception as e:
-    print(f"\n❌ Erro ao carregar arquivos: {e}")
-    exit()
+    print(f"\n❌ Erro ao carregar cql_venda_unica: {e} (rode treinar_cql.py)")
+    raise SystemExit(1)
 
 # --- 3. O LOOP DE INFERÊNCIA ---
 print(f"\n{'CENÁRIO':<10} | {'TIER':<12} | {'ORÇAMENTO':<10} | {'PREÇO REC. (IA)':<15} | {'LUCRO ESPERADO':<15}")
 print("-" * 75)
 
 for linha in CENARIOS_TABELA:
-    # 1. Monta o dicionário completo do estado
-    estado_dict = BASE_CONFIG.copy()
-    estado_dict.update(linha) # Sobrescreve com os dados da tabela
-    
-    # 2. Pré-processamento (Igual ao main.py)
-    # Cria DF de uma linha
-    df = pd.DataFrame([estado_dict])
-    
-    # Aplica OHE nas categóricas
-    cat_cols = ohe.feature_names_in_
-    x_cat = ohe.transform(df[cat_cols])
-    
-    # Aplica Scaler nas numéricas
-    num_cols = scaler_state.feature_names_in_
-    x_num = scaler_state.transform(df[num_cols])
-    
-    # Junta tudo
-    x_raw = np.concatenate([x_cat, x_num], axis=1)
-    
-    # Garante a ordem correta das colunas (se houver desalinhamento)
-    # Nota: Aqui assumimos que a concatenação segue a ordem de criação. 
-    # Para rigor absoluto, reindexaríamos com pandas se tivéssemos os nomes das colunas OHE.
-    # Como o fluxo é controlado, x_raw deve estar ok.
-    state_vector = x_raw.astype(np.float32)
-
-    # 3. INFERÊNCIA (A Pergunta para a IA)
-    # Qual o preço?
-    acao_norm = cql.predict(state_vector)[0]
-    preco_real = float(sim.acao_para_preco(acao_norm[0], linha['Tier'], faixas_tier))
-    
-    # Qual o lucro esperado? (Risco)
-    if hasattr(cql, "predict_value"):
-        action_batch = acao_norm.reshape(1, -1)
-        lucro_norm = cql.predict_value(state_vector, action_batch)[0]
-        lucro_real = scaler_reward.inverse_transform(lucro_norm.reshape(1, -1))[0][0]
-    else:
-        lucro_real = 0.0
-
-    # 4. IMPRIMIR RESULTADO DA LINHA
-    print(f"{linha['Nome']:<10} | {linha['Tier']:<12} | ${linha['Orcamento']:<9,.0f} | ${preco_real:<14.2f} | ${lucro_real:<14.2f}")
+    estado = pd.DataFrame([{**BASE_CONFIG, **{k: v for k, v in linha.items() if k != 'Nome'}}])
+    preco = float(cql.precos(estado)[0])
+    lucro = float(cql.quantis_reais(estado, [preco]).mean())  # média dos quantis do crítico
+    print(f"{linha['Nome']:<10} | {linha['Tier']:<12} | ${linha['Orcamento']:<9,.0f} | ${preco:<14.2f} | ${lucro:<14.2f}")
 
 print("-" * 75)

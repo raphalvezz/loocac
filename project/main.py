@@ -2,7 +2,7 @@
 LOCAC - API de precificação.
 
 Quatro métodos, todos atrás da mesma interface (politicas.Politica.precos):
-  rl       CQL treinado nos notebooks (modelo_rl_final.d3 / modelo_rl_assinatura.d3)
+  rl       CQL canônico (treinar_cql.py: cql_venda_unica / cql_assinatura)
   sl       regressor supervisionado + grade de preços (SL_FINAL)
   bandido  bandido contextual LightGBM (treinar_bandido.py)
   bc       behavior cloning, imitação do histórico (treinar_bc.py)
@@ -160,19 +160,14 @@ def apply_kbs(preco: float, tier: str):
 
 
 # --- 4. Carregamento dos modelos ---------------------------------------------
-ARQUIVOS_RL = {"venda_unica": "modelo_rl_final.d3", "assinatura": "modelo_rl_assinatura.d3"}
 ARQUIVOS_SL = {"venda_unica": "sl_profit_regressor_model.joblib", "assinatura": "sl_ltv_regressor_model.joblib"}
-RECOMPENSA = {"venda_unica": "scaler_recompensa.joblib", "assinatura": "scaler_assinatura_recompensa.joblib"}
 
 
 def load_models():
     """Carrega cada método de forma independente: um arquivo ausente desativa só ele."""
     novo: Dict[str, Any] = {"metodos": {c: {} for c in COBRANCAS}, "erros": {}}
     try:
-        with open("cenarios_treino.json") as f:
-            cenarios = json.load(f)
-        ohe = joblib.load("ohe_encoder.joblib")
-        scaler_estado = joblib.load("scaler_estado.joblib")
+        # Média da memória da assinatura (valor padrão quando a tela não envia)
         novo["scaler_assinatura_memoria"] = joblib.load("scaler_assinatura_memoria.joblib")
     except FileNotFoundError as e:
         novo["erros"]["base"] = f"arquivo ausente: {e.filename} (rode train_pipeline.py)"
@@ -182,9 +177,8 @@ def load_models():
         return
 
     for cob in COBRANCAS:
-        memoria = novo["scaler_assinatura_memoria"] if cob == "assinatura" else None
         carregadores = {
-            "rl": lambda: pol.CQL.de_artefatos(cob, cenarios, ARQUIVOS_RL[cob], ohe, scaler_estado, memoria),
+            "rl": lambda: pol.CQL.carregar(f"cql_{cob}"),
             "sl": lambda: joblib.load(ARQUIVOS_SL[cob]),
             "bandido": lambda: joblib.load(f"bandido_{cob}.joblib"),
             "bc": lambda: pol.BC.carregar(f"bc_{cob}"),
@@ -194,10 +188,6 @@ def load_models():
                 novo["metodos"][cob][metodo] = carregar()
             except Exception as e:  # arquivo ausente ou incompatível
                 novo["erros"][f"{metodo}/{cob}"] = str(e)
-        try:
-            novo[f"scaler_recompensa_{cob}"] = joblib.load(RECOMPENSA[cob])
-        except FileNotFoundError as e:
-            novo["erros"][f"risco/{cob}"] = str(e)
 
     models_state.clear()
     models_state.update(novo)
@@ -230,10 +220,9 @@ def politica(metodo: str, cobranca: str):
 def risco(cobranca: str, estados: pd.DataFrame, preco: float):
     """VaR/CVaR 5% do lucro no preço dado, pelos quantis do crítico do RL (avaliador comum)."""
     rl = models_state.get("metodos", {}).get(cobranca, {}).get("rl")
-    scaler = models_state.get(f"scaler_recompensa_{cobranca}")
-    if rl is None or scaler is None:
+    if rl is None:
         return None, None
-    quantis = scaler.inverse_transform(rl.quantis(estados, [preco]).reshape(-1, 1)).ravel()
+    quantis = rl.quantis_reais(estados, [preco]).ravel()
     var_5 = float(np.quantile(quantis, 0.05))
     return var_5, float(quantis[quantis <= var_5].mean())
 
@@ -242,9 +231,7 @@ def lucro_previsto(p, cobranca: str, estados: pd.DataFrame, preco: float) -> Opt
     if hasattr(p, "prever_lucro"):          # SL e bandido
         return float(p.prever_lucro(estados, [preco])[0])
     if isinstance(p, pol.CQL):              # média dos quantis do crítico
-        scaler = models_state.get(f"scaler_recompensa_{cobranca}")
-        if scaler is not None:
-            return float(scaler.inverse_transform(p.quantis(estados, [preco]).mean(axis=1, keepdims=True))[0, 0])
+        return float(p.quantis_reais(estados, [preco]).mean())
     return None                             # BC não tem modelo de lucro
 
 

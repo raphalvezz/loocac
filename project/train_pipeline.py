@@ -6,8 +6,6 @@ import time
 # Nomes exatos dos seus arquivos (conforme seus uploads)
 GENERATOR_SCRIPT = "Generator_NEW.py"
 NOTEBOOK_SL = "SL_FINAL (1).ipynb"
-NOTEBOOK_RL_FIXO = "código_final_RL_OFF (25).ipynb"
-NOTEBOOK_RL_SUB = "RL_assinatura (5).ipynb"
 
 def run_command(command, description):
     print(f"\n>>> ⏳ {description}...")
@@ -46,17 +44,9 @@ def run_pipeline():
     # 2c. Treinar e exportar o behavior cloning (imitação do histórico)
     run_command(f"{sys.executable} treinar_bc.py", "2c. Treinando Behavior Cloning (BC)")
 
-    # 3. Treinar RL Fixo
-    run_command(
-        f"{sys.executable} -m jupyter nbconvert --to notebook --execute --inplace \"{NOTEBOOK_RL_FIXO}\"", 
-        "3. Treinando RL Venda Única (CQL)"
-    )
-
-    # 4. Treinar RL Assinatura
-    run_command(
-        f"{sys.executable} -m jupyter nbconvert --to notebook --execute --inplace \"{NOTEBOOK_RL_SUB}\"", 
-        "4. Treinando RL Assinatura (LTV)"
-    )
+    # 3. Treinar o RL (CQL) pela versão canônica (politicas.CQL); os notebooks
+    #    de RL ficam só como documentação da versão anterior
+    run_command(f"{sys.executable} treinar_cql.py", "3. Treinando RL (CQL) - venda única e assinatura")
 
     # A comparação com os baselines (várias sementes, retreina o CQL) é um passo
     # separado e demorado: python avaliar_politicas.py (docs/protocolo_avaliacao.md)

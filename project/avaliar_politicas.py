@@ -86,7 +86,8 @@ class AvaliadorSimulado:
     def __init__(self, modelo):
         cenarios = carregar_cenarios()
         memoria = joblib.load('scaler_assinatura_memoria.joblib') if modelo == 'assinatura' else None
-        self.politica = pol.CQL(modelo, cenarios)
+        # agentes dos notebooks: ação por Tier e encoders do Generator
+        self.politica = pol.CQL(modelo, cenarios, escala_acao='tier')
         self.politica.prep = pol.PreprocessadorEstado(
             modelo, joblib.load('ohe_encoder.joblib'), joblib.load('scaler_estado.joblib'), memoria)
         self.ctx = sim.contextos(cenarios)

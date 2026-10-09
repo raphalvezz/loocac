@@ -249,15 +249,15 @@ class AgenteD3(Politica):
     """Base dos agentes d3rlpy (CQL e BC): ação [-1, 1] mapeada para uma faixa de
     preço (log min-max), pré-processamento do estado e salvar/carregar.
 
-    escala_acao  'tier'   ação [-1, 1] = faixa do Tier do estado (padrão dos notebooks)
-                 'estado' ação [-1, 1] = faixa observável do estado (a mesma em que o
-                          bandido busca o preço)
+    escala_acao  'estado' ação [-1, 1] = faixa observável do estado, a mesma em que o
+                          bandido busca o preço (PADRÃO; ver protocolo, seção 12)
+                 'tier'   ação [-1, 1] = faixa do Tier do estado (versão dos notebooks)
                  'global' ação [-1, 1] = faixa de todos os preços
     """
     treinavel = True
     gpu = 'opcional (acelera o treino)'
 
-    def __init__(self, modelo, cenarios, escala_acao='tier'):
+    def __init__(self, modelo, cenarios, escala_acao='estado'):
         super().__init__(modelo, cenarios)
         self.faixas_tier = sim.faixas_tier(cenarios)
         if escala_acao == 'global':
@@ -316,9 +316,10 @@ class AgenteD3(Politica):
 
 
 class CQL(AgenteD3):
-    """CQL (d3rlpy) com a configuração dos notebooks.
+    """CQL (d3rlpy). Esta classe (com treinar_cql.py) é a versão CANÔNICA do
+    agente; os notebooks de RL só documentam a versão anterior.
 
-    Opções usadas nas ablações (ablacoes_cql.py); os padrões são os dos notebooks:
+    Opções usadas nas ablações (ablacoes_cql.py); padrões:
       gamma               0.0 = bandido contextual de um passo
       peso_conservador    conservative_weight do CQL
       escala_acao         ver AgenteD3
@@ -331,7 +332,7 @@ class CQL(AgenteD3):
     explicabilidade = 'baixa: rede neural; expõe só a ação e os quantis de lucro do crítico'
 
     def __init__(self, modelo, cenarios, n_passos=50000, passos_por_epoca=1000, paciencia=20,
-                 avaliador=None, gamma=0.0, peso_conservador=5.0, escala_acao='tier',
+                 avaliador=None, gamma=0.0, peso_conservador=5.0, escala_acao='estado',
                  escala_recompensa='global'):
         super().__init__(modelo, cenarios, escala_acao)
         if escala_recompensa not in ('global', 'log', 'estado'):
@@ -344,9 +345,9 @@ class CQL(AgenteD3):
 
     @classmethod
     def de_artefatos(cls, modelo, cenarios, caminho_modelo, ohe, scaler_estado, scaler_memoria=None):
-        """Carrega o agente salvo pelos notebooks (.d3) com os encoders do Generator."""
+        """Carrega um agente salvo pelos notebooks (.d3, ação por Tier) com os encoders do Generator."""
         import d3rlpy
-        pol = cls(modelo, cenarios)
+        pol = cls(modelo, cenarios, escala_acao='tier')
         pol.algo = d3rlpy.load_learnable(caminho_modelo, device='cpu')
         pol.prep = PreprocessadorEstado(modelo, ohe, scaler_estado, scaler_memoria)
         return pol
@@ -384,16 +385,21 @@ class CQL(AgenteD3):
                         break
             self.algo.load_model(caminho)
         self.score_selecao = melhor
+        return self
 
     def _recompensas(self, treino):
         lucro = treino[ALVO[self.modelo]].to_numpy(dtype=float)
         if self.escala_recompensa == 'log':
             lucro = np.log(np.maximum(lucro, 1e-6))
+            self.escala_rec = (float(lucro.mean()), float(lucro.std()))
+            return ((lucro - self.escala_rec[0]) / self.escala_rec[1]).reshape(-1, 1)
         elif self.escala_recompensa == 'estado':
             grupo = [str(k) for k in chaves(self.modelo, treino)]
             media = pd.Series(lucro).groupby(grupo).transform('mean').to_numpy()
             return (lucro / media - 1).reshape(-1, 1)
-        return StandardScaler().fit_transform(lucro.reshape(-1, 1))
+        # Guarda a escala para converter os quantis do crítico de volta a US$ (quantis_reais)
+        self.escala_rec = (float(lucro.mean()), float(lucro.std()))
+        return ((lucro - self.escala_rec[0]) / self.escala_rec[1]).reshape(-1, 1)
 
     def quantis(self, estados, precos):
         """Quantis do crítico QR (escala da recompensa de treino) para (estado, preço)."""
@@ -407,6 +413,17 @@ class CQL(AgenteD3):
         return out.quantiles.cpu().numpy().reshape(len(estados), -1)
 
 
+    def quantis_reais(self, estados, precos):
+        """Quantis do crítico convertidos para US$ (lucro ou LTV)."""
+        q = self.quantis(estados, precos)
+        media, desvio = self.escala_rec
+        if self.escala_recompensa == 'global':
+            return q * desvio + media
+        if self.escala_recompensa == 'log':
+            return np.exp(q * desvio + media)
+        raise NotImplementedError("escala_recompensa='estado' não tem conversão única para US$")
+
+
 class BC(AgenteD3):
     """Behavior cloning: imita os preços da política que gerou os dados.
 
@@ -417,7 +434,7 @@ class BC(AgenteD3):
     nome = 'bc'
     explicabilidade = 'baixa: rede neural que reproduz os preços do histórico'
 
-    def __init__(self, modelo, cenarios, n_passos=5000, escala_acao='tier'):
+    def __init__(self, modelo, cenarios, n_passos=5000, escala_acao='estado'):
         super().__init__(modelo, cenarios, escala_acao)
         self.n_passos = n_passos
 

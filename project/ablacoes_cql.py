@@ -32,14 +32,17 @@ from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 import pandas as pd
 
+# A base reproduz os notebooks (ação por Tier); escala_acao='estado' virou o padrão
+# de politicas.CQL depois destas ablações (protocolo, seção 12).
+_TIER = {'escala_acao': 'tier'}
 CONFIGS = {
-    'base': {},
-    'w_0.5': {'peso_conservador': 0.5},
-    'w_20': {'peso_conservador': 20.0},
+    'base': {**_TIER},
+    'w_0.5': {**_TIER, 'peso_conservador': 0.5},
+    'w_20': {**_TIER, 'peso_conservador': 20.0},
     'acao_global': {'escala_acao': 'global'},
-    'gamma_0.98': {'gamma': 0.98},
-    'recompensa_log': {'escala_recompensa': 'log'},
-    'recompensa_estado': {'escala_recompensa': 'estado'},
+    'gamma_0.98': {**_TIER, 'gamma': 0.98},
+    'recompensa_log': {**_TIER, 'escala_recompensa': 'log'},
+    'recompensa_estado': {**_TIER, 'escala_recompensa': 'estado'},
     # Correção proposta pelo diagnóstico (diagnostico_cql.py)
     'acao_estado': {'escala_acao': 'estado'},
     'acao_estado+recompensa_estado': {'escala_acao': 'estado', 'escala_recompensa': 'estado'},

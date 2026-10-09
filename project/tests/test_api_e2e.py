@@ -17,19 +17,6 @@ CHAVE = "chave-de-teste"
 ESTADO = {"Regiao": "Europe", "Plataforma": "Instagram", "Tier": "Low Ticket", "Orcamento": 1000}
 
 
-def _treinar_rl_como_notebook(buffer_path, saida, passos=200):
-    from d3rlpy.algos import CQLConfig
-    from d3rlpy.dataset import FIFOBuffer, ReplayBuffer
-    from d3rlpy.models import QRQFunctionFactory
-    with open(buffer_path, "rb") as f:
-        dataset = ReplayBuffer.load(f, FIFOBuffer(limit=200000))
-    cql = CQLConfig(batch_size=256, gamma=0.0, conservative_weight=5.0,
-                    q_func_factory=QRQFunctionFactory(n_quantiles=64)).create(device="cpu")
-    cql.fit(dataset, n_steps=passos, n_steps_per_epoch=passos,
-            logger_adapter=d3rlpy.logging.NoopAdapterFactory(), show_progress=False)
-    cql.save(saida)
-
-
 @pytest.fixture(scope="module")
 def cliente(tmp_path_factory):
     pasta = tmp_path_factory.mktemp("artefatos")
@@ -53,8 +40,7 @@ def cliente(tmp_path_factory):
         treinar_bandido.main()
         for cob in ["venda_unica", "assinatura"]:
             pol.BC(cob, cenarios, n_passos=300).treinar(dados, 42).salvar(f"bc_{cob}")
-        _treinar_rl_como_notebook("rl_offline_buffer.h5", "modelo_rl_final.d3")
-        _treinar_rl_como_notebook("rl_assinatura_buffer.h5", "modelo_rl_assinatura.d3")
+            pol.CQL(cob, cenarios, n_passos=200).treinar(dados, 42).salvar(f"cql_{cob}")  # treinar_cql.py, curto
 
         os.environ["LOCAC_API_KEY"] = CHAVE
         main = importlib.reload(importlib.import_module("main"))
