@@ -11,6 +11,8 @@ REQUIRED_MODELS = [
     "modelo_rl_assinatura.d3",
     "sl_profit_regressor_model.joblib",
     "sl_ltv_regressor_model.joblib",
+    "bandido_venda_unica.joblib",
+    "bc_venda_unica.d3",
     "scaler_estado.joblib" # Verifica um scaler também para garantir
 ]
 

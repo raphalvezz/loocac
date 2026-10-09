@@ -41,11 +41,11 @@ import simulador as sim
 MODELOS = ['venda_unica', 'assinatura']
 TIERS = ['Low Ticket', 'High Ticket', 'Todos']
 # Políticas comparadas (as variantes do bandido em operação estão em simular_bandido_online.py)
-TODAS = [pol.Aleatoria, pol.MeioFaixa, pol.MaximoFaixa, pol.SL, ban.BandidoLGBM, pol.CQL,
+TODAS = [pol.Aleatoria, pol.MeioFaixa, pol.MaximoFaixa, pol.SL, ban.BandidoLGBM, pol.BC, pol.CQL,
          pol.OraculoObservavel, pol.Oraculo]
 SEMENTES_PADRAO = [42, 43, 44, 45, 46]
 # Comparações pareadas fixadas no protocolo (A - B)
-COMPARACOES = [('cql', 'aleatorio'), ('cql', 'meio_faixa'), ('cql', 'sl'), ('cql', 'bandido'),
+COMPARACOES = [('cql', 'aleatorio'), ('cql', 'meio_faixa'), ('cql', 'sl'), ('cql', 'bandido'), ('cql', 'bc'),
                ('sl', 'aleatorio'), ('sl', 'meio_faixa'),
                ('bandido', 'aleatorio'), ('bandido', 'meio_faixa'), ('bandido', 'sl')]
 
@@ -112,7 +112,7 @@ def ic95(valores):
 
 
 def construir_politicas(modelo, cenarios, args):
-    classes = [c for c in TODAS if not (c is pol.CQL and args.sem_cql)]
+    classes = [c for c in TODAS if not (c in (pol.CQL, pol.BC) and args.sem_cql)]
     out = []
     for cls in classes:
         if cls is pol.CQL:
@@ -191,7 +191,7 @@ def main():
                    help='quantas sementes (a partir de 42); o protocolo usa 5')
     p.add_argument('--n-por-cenario', type=int, default=5000)
     p.add_argument('--passos-cql', type=int, default=50000)
-    p.add_argument('--sem-cql', action='store_true', help='pula o CQL (sem d3rlpy/torch)')
+    p.add_argument('--sem-cql', action='store_true', help='pula CQL e BC (sem d3rlpy/torch)')
     p.add_argument('--saida', default='resultados')
     args = p.parse_args()
     args.sementes = list(range(42, 42 + args.sementes))

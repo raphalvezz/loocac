@@ -91,7 +91,21 @@ class Politica:
         self.catalogo = catalogo_faixas(modelo, cenarios)
 
     def faixas(self, estados):
-        return [self.catalogo[k] for k in chaves(self.modelo, estados)]
+        return [self.faixa_da_chave(k) for k in chaves(self.modelo, estados)]
+
+    def faixa_da_chave(self, chave):
+        """Faixa observável; para estados fora do catálogo (ex.: orçamento digitado na
+        tela que não é de nenhum cenário, ou memória da assinatura com valor médio),
+        usa os cenários mais próximos do mesmo Tier."""
+        if chave in self.catalogo:
+            return self.catalogo[chave]
+        tier, orcamento = chave[0], chave[1]
+        mesmo_tier = [k for k in self.catalogo if k[0] == tier]
+        if not mesmo_tier:
+            raise KeyError(f"Tier fora do catálogo: {tier}")
+        orc_proximo = min({k[1] for k in mesmo_tier}, key=lambda o: abs(np.log(o) - np.log(orcamento)))
+        faixas = [self.catalogo[k] for k in mesmo_tier if k[1] == orc_proximo]
+        return min(f[0] for f in faixas), max(f[1] for f in faixas)
 
     def treinar(self, dados, semente):
         pass
@@ -231,29 +245,19 @@ class PreprocessadorEstado:
         return np.concatenate(partes, axis=1).astype(np.float32)
 
 
-class CQL(Politica):
-    """CQL (d3rlpy) com a configuração dos notebooks.
+class AgenteD3(Politica):
+    """Base dos agentes d3rlpy (CQL e BC): ação [-1, 1] mapeada para uma faixa de
+    preço (log min-max), pré-processamento do estado e salvar/carregar.
 
-    Opções usadas nas ablações (ablacoes_cql.py); os padrões são os dos notebooks:
-      gamma               0.0 = bandido contextual de um passo
-      peso_conservador    conservative_weight do CQL
-      escala_acao         'tier'   ação [-1, 1] = faixa do Tier do estado (log min-max)
-                          'estado' ação [-1, 1] = faixa observável do estado (a mesma
-                                   em que o bandido busca o preço)
-                          'global' ação [-1, 1] = faixa de todos os preços (log min-max)
-      escala_recompensa   'global' padronização única (lucros de centenas a milhões)
-                          'log'    log(lucro) padronizado
-                          'estado' lucro / lucro médio da chave de estado - 1; com
-                                   gamma=0 não muda o melhor preço de cada estado
+    escala_acao  'tier'   ação [-1, 1] = faixa do Tier do estado (padrão dos notebooks)
+                 'estado' ação [-1, 1] = faixa observável do estado (a mesma em que o
+                          bandido busca o preço)
+                 'global' ação [-1, 1] = faixa de todos os preços
     """
-    nome = 'cql'
     treinavel = True
     gpu = 'opcional (acelera o treino)'
-    explicabilidade = 'baixa: rede neural; expõe só a ação e os quantis de lucro do crítico'
 
-    def __init__(self, modelo, cenarios, n_passos=50000, passos_por_epoca=1000, paciencia=20,
-                 avaliador=None, gamma=0.0, peso_conservador=5.0, escala_acao='tier',
-                 escala_recompensa='global'):
+    def __init__(self, modelo, cenarios, escala_acao='tier'):
         super().__init__(modelo, cenarios)
         self.faixas_tier = sim.faixas_tier(cenarios)
         if escala_acao == 'global':
@@ -262,10 +266,78 @@ class CQL(Politica):
             self.faixas_tier = {t: [lo, hi] for t in self.faixas_tier}
         elif escala_acao not in ('tier', 'estado'):
             raise ValueError(escala_acao)
+        self.escala_acao = escala_acao
+        self.algo = None
+
+    def faixas_acao(self, estados):
+        """(lo, hi) de preço que a ação [-1, 1] cobre, por linha de `estados`."""
+        if self.escala_acao == 'estado':
+            return np.array(self.faixas(estados), dtype=float)
+        return np.array([self.faixas_tier[t] for t in estados['Tier']], dtype=float)
+
+    def preco_para_acao(self, precos, estados):
+        lo, hi = np.log(self.faixas_acao(estados)).T
+        return 2 * (np.log(np.asarray(precos, dtype=float)) - lo) / (hi - lo) - 1
+
+    def acao_para_preco(self, acoes, estados):
+        lo, hi = np.log(self.faixas_acao(estados)).T
+        return np.exp(lo + (np.clip(acoes, -1.0, 1.0) + 1) / 2 * (hi - lo))
+
+    def _buffer(self, treino, recompensas):
+        from d3rlpy.dataset import Episode, FIFOBuffer, ReplayBuffer
+        self.prep = PreprocessadorEstado(self.modelo).fit(treino)
+        acoes = self.preco_para_acao(treino['Preco_Amostra'].to_numpy(), treino).reshape(-1, 1)
+        episodio = Episode(self.prep.transform(treino), acoes.astype(np.float32),
+                           np.asarray(recompensas, dtype=np.float32).reshape(-1, 1), True)
+        return ReplayBuffer(FIFOBuffer(limit=len(treino)), episodes=[episodio])
+
+    def precos(self, estados):
+        acoes = self.algo.predict(self.prep.transform(estados)).reshape(-1)
+        return self.acao_para_preco(acoes, estados)
+
+    def salvar(self, prefixo):
+        """Grava <prefixo>.d3 (rede, d3rlpy) e <prefixo>.joblib (encoders e configuração)."""
+        import joblib
+        algo, avaliador = self.algo, getattr(self, 'avaliador', None)
+        algo.save(f'{prefixo}.d3')
+        self.algo, self.avaliador = None, None  # funções/rede não vão no joblib
+        try:
+            joblib.dump(self, f'{prefixo}.joblib')
+        finally:
+            self.algo, self.avaliador = algo, avaliador
+
+    @classmethod
+    def carregar(cls, prefixo):
+        import d3rlpy
+        import joblib
+        politica = joblib.load(f'{prefixo}.joblib')
+        politica.algo = d3rlpy.load_learnable(f'{prefixo}.d3', device='cpu')
+        return politica
+
+
+class CQL(AgenteD3):
+    """CQL (d3rlpy) com a configuração dos notebooks.
+
+    Opções usadas nas ablações (ablacoes_cql.py); os padrões são os dos notebooks:
+      gamma               0.0 = bandido contextual de um passo
+      peso_conservador    conservative_weight do CQL
+      escala_acao         ver AgenteD3
+      escala_recompensa   'global' padronização única (lucros de centenas a milhões)
+                          'log'    log(lucro) padronizado
+                          'estado' lucro / lucro médio da chave de estado - 1; com
+                                   gamma=0 não muda o melhor preço de cada estado
+    """
+    nome = 'cql'
+    explicabilidade = 'baixa: rede neural; expõe só a ação e os quantis de lucro do crítico'
+
+    def __init__(self, modelo, cenarios, n_passos=50000, passos_por_epoca=1000, paciencia=20,
+                 avaliador=None, gamma=0.0, peso_conservador=5.0, escala_acao='tier',
+                 escala_recompensa='global'):
+        super().__init__(modelo, cenarios, escala_acao)
         if escala_recompensa not in ('global', 'log', 'estado'):
             raise ValueError(escala_recompensa)
         self.gamma, self.peso_conservador = gamma, peso_conservador
-        self.escala_acao, self.escala_recompensa = escala_acao, escala_recompensa
+        self.escala_recompensa = escala_recompensa
         self.n_passos, self.passos_por_epoca, self.paciencia = n_passos, passos_por_epoca, paciencia
         # Função (algo -> score) para escolher o checkpoint; ver avaliar_politicas.metrica_selecao
         self.avaliador = avaliador
@@ -282,16 +354,11 @@ class CQL(Politica):
     def treinar(self, dados, semente):
         import d3rlpy
         from d3rlpy.algos import CQLConfig
-        from d3rlpy.dataset import Episode, FIFOBuffer, ReplayBuffer
         from d3rlpy.models import QRQFunctionFactory
 
         d3rlpy.seed(semente)
         treino = dados.iloc[: int(len(dados) * FRACAO_TREINO)]
-        self.prep = PreprocessadorEstado(self.modelo).fit(treino)
-        acoes = self.preco_para_acao(treino['Preco_Amostra'].to_numpy(), treino).reshape(-1, 1)
-        episodio = Episode(self.prep.transform(treino), acoes.astype(np.float32),
-                           self._recompensas(treino).astype(np.float32), True)
-        buffer = ReplayBuffer(FIFOBuffer(limit=len(treino)), episodes=[episodio])
+        buffer = self._buffer(treino, self._recompensas(treino))
 
         self.algo = CQLConfig(
             batch_size=256, gamma=self.gamma,
@@ -318,20 +385,6 @@ class CQL(Politica):
             self.algo.load_model(caminho)
         self.score_selecao = melhor
 
-    def faixas_acao(self, estados):
-        """(lo, hi) de preço que a ação [-1, 1] cobre, por linha de `estados`."""
-        if self.escala_acao == 'estado':
-            return np.array(self.faixas(estados), dtype=float)
-        return np.array([self.faixas_tier[t] for t in estados['Tier']], dtype=float)
-
-    def preco_para_acao(self, precos, estados):
-        lo, hi = np.log(self.faixas_acao(estados)).T
-        return 2 * (np.log(np.asarray(precos, dtype=float)) - lo) / (hi - lo) - 1
-
-    def acao_para_preco(self, acoes, estados):
-        lo, hi = np.log(self.faixas_acao(estados)).T
-        return np.exp(lo + (np.clip(acoes, -1.0, 1.0) + 1) / 2 * (hi - lo))
-
     def _recompensas(self, treino):
         lucro = treino[ALVO[self.modelo]].to_numpy(dtype=float)
         if self.escala_recompensa == 'log':
@@ -342,9 +395,45 @@ class CQL(Politica):
             return (lucro / media - 1).reshape(-1, 1)
         return StandardScaler().fit_transform(lucro.reshape(-1, 1))
 
-    def precos(self, estados):
-        acoes = self.algo.predict(self.prep.transform(estados)).reshape(-1)
-        return self.acao_para_preco(acoes, estados)
+    def quantis(self, estados, precos):
+        """Quantis do crítico QR (escala da recompensa de treino) para (estado, preço)."""
+        import torch
+        q = self.algo.impl._q_func_forwarder._forwarders[0]._q_func
+        q.eval()
+        acoes = self.preco_para_acao(precos, estados).reshape(-1, 1)
+        with torch.no_grad():
+            out = q(torch.tensor(self.prep.transform(estados), dtype=torch.float32),
+                    torch.tensor(acoes, dtype=torch.float32))
+        return out.quantiles.cpu().numpy().reshape(len(estados), -1)
+
+
+class BC(AgenteD3):
+    """Behavior cloning: imita os preços da política que gerou os dados.
+
+    Com coleta uniforme, aprende o preço médio (em ação) de cada estado. É a
+    referência mínima de um método offline: o RL só se justifica se superar a
+    imitação do histórico.
+    """
+    nome = 'bc'
+    explicabilidade = 'baixa: rede neural que reproduz os preços do histórico'
+
+    def __init__(self, modelo, cenarios, n_passos=5000, escala_acao='tier'):
+        super().__init__(modelo, cenarios, escala_acao)
+        self.n_passos = n_passos
+
+    def treinar(self, dados, semente):
+        import d3rlpy
+        from d3rlpy.algos import BCConfig
+
+        d3rlpy.seed(semente)
+        treino = dados.iloc[: int(len(dados) * FRACAO_TREINO)]
+        buffer = self._buffer(treino, np.zeros(len(treino)))  # BC não usa recompensa
+        self.algo = BCConfig(batch_size=256, learning_rate=1e-3,
+                             observation_scaler=None, action_scaler=None).create(
+            device='cuda:0' if _cuda() else 'cpu')
+        self.algo.fit(buffer, n_steps=self.n_passos, n_steps_per_epoch=min(1000, self.n_passos),
+                      logger_adapter=d3rlpy.logging.NoopAdapterFactory(), show_progress=False)
+        return self
 
 
 def _cuda():

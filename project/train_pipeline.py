@@ -43,6 +43,9 @@ def run_pipeline():
     # 2b. Treinar e exportar o bandido contextual (referência do RL)
     run_command(f"{sys.executable} treinar_bandido.py", "2b. Treinando Bandido Contextual (LightGBM)")
 
+    # 2c. Treinar e exportar o behavior cloning (imitação do histórico)
+    run_command(f"{sys.executable} treinar_bc.py", "2c. Treinando Behavior Cloning (BC)")
+
     # 3. Treinar RL Fixo
     run_command(
         f"{sys.executable} -m jupyter nbconvert --to notebook --execute --inplace \"{NOTEBOOK_RL_FIXO}\"", 

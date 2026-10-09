@@ -84,3 +84,13 @@ def test_sl_prever_lucro_e_joblib(modelo, estados, tmp_path):
     assert np.allclose(joblib.load(caminho).prever_lucro(estados, np.full(len(estados), 50.0)), lucro)
     precos = av.consultar(sl, estados)
     assert all(lo <= p <= hi for p, (lo, hi) in zip(precos, sl.faixas(estados)))
+
+
+def test_faixa_fora_do_catalogo():
+    p = pol.MeioFaixa('assinatura', C)
+    # memória com valor que não é de nenhum produto: usa a união do mesmo Tier e orçamento
+    assert p.faixa_da_chave(('Low Ticket', 1000.0, 1725.0)) == (20.0, 100.0)
+    v = pol.MeioFaixa('venda_unica', C)
+    # orçamento que não existe nos cenários: usa o orçamento mais próximo (log) do mesmo Tier
+    assert v.faixa_da_chave(('Low Ticket', 1500.0)) == (20.0, 100.0)
+    assert v.faixa_da_chave(('High Ticket', 3000.0)) == (500.0, 1000.0)
