@@ -4,9 +4,9 @@ Este documento fixa **antes de rodar** o simulador, a métrica, as comparações
 critérios de sucesso do capítulo 5. Resultados que contrariem as hipóteses também
 são reportados.
 
-> **Status: rascunho para revisão.** Os critérios da seção 6 e as decisões da
-> seção 11 precisam ser confirmados antes da primeira rodada com CQL. Depois disso,
-> qualquer mudança entra no histórico (seção 12) com justificativa.
+> **Status: em vigor desde 2026-10-09.** Critérios da seção 6 confirmados; escala
+> da ação do CQL decidida (seção 11, item 3). Os itens 1 e 2 da seção 11 seguem em
+> aberto e, se mudarem algo, entram no histórico (seção 12) com justificativa.
 
 ## 1. Simulador
 
@@ -63,8 +63,14 @@ Hiperparâmetros fixados a priori, sem ajuste na grade de avaliação:
   alvo em US$; features = categóricas + Orçamento + Preço (+ memória na assinatura);
 - bandido: `LGBMRegressor(n_estimators=300, learning_rate=0.05, num_leaves=63)`,
   alvo log(lucro), grade de 200 preços (geométrica) na faixa observável;
-- CQL: os mesmos dos notebooks (`gamma=0`, `conservative_weight=5`, 64 quantis,
-  `batch_size=256`, até 50.000 passos, paciência de 20 épocas de 1.000 passos).
+- CQL (versão canônica `politicas.CQL` / `treinar_cql.py`): `gamma=0`,
+  `conservative_weight=5`, 64 quantis, `batch_size=256`, ação na faixa observável
+  do estado (`escala_acao='estado'`), até 50.000 passos, paciência de 20 épocas de
+  1.000 passos, checkpoint pelo lucro simulado;
+- BC: `politicas.BC` (d3rlpy), mesma escala de ação do CQL, 5.000 passos.
+
+Os notebooks de RL documentam a versão anterior (ação por Tier) e não entram nos
+resultados.
 
 ## 5. Sementes e intervalos
 
@@ -77,7 +83,7 @@ Hiperparâmetros fixados a priori, sem ajuste na grade de avaliação:
   Conclusão: "A > B" se o IC 95% da diferença estiver todo acima de 0; "A < B" se
   todo abaixo; senão, "inconclusivo".
 
-## 6. Critérios de sucesso (a confirmar)
+## 6. Critérios de sucesso (confirmados em 2026-10-09)
 
 Avaliados no total (Todos) e por tier, separadamente para venda única e assinatura:
 
@@ -156,13 +162,10 @@ GPU e grau de explicabilidade.
    então a diferença máxima entre qualquer política aprendida e a regra fixa é de
    ~3 p.p. Opções: ampliar a variação de contexto (simulador v1.1) ou manter e
    reportar que o problema tem pouca folga.
-3. **Escala da ação do CQL.** As ablações (seção 9) mostram que, com a ação na
-   faixa do Tier, o crítico extrapola para preços que o estado nunca viu e o
-   ator fica entre duas modas; com a ação na faixa observável do estado, o CQL
-   passa de ~61% para ~85% do ótimo na venda única e de ~81% para ~98% na
-   assinatura (treino curto). Adotar `escala_acao='estado'` como padrão no treino
-   completo é uma decisão tomada depois de ver resultados: precisa constar como
-   desvio (seção 12) e mudar também a API e os notebooks.
+3. ~~**Escala da ação do CQL.**~~ **Decidido em 2026-10-09:** `escala_acao='estado'`
+   é o padrão no treino, na API e na avaliação; `politicas.CQL`/`treinar_cql.py`
+   são a versão canônica e os notebooks só documentam. Registrado como desvio
+   (seção 12).
 
 ## 12. Histórico
 
@@ -176,6 +179,7 @@ GPU e grau de explicabilidade.
 |---|---|---|
 | 2026-10-08 | Bandido passa a usar alvo em log(lucro) | Decidido **depois** da primeira avaliação: em US$ ele ficava no piso da faixa no cenário 0. A política `sl` mantém o alvo em US$ e mostra o efeito dessa escolha. |
 | 2026-10-08 | `sl_dataset_combined.csv` passa a incluir as colunas de memória | O SL de LTV (assinatura) usa o mesmo estado do CQL. Os dados gerados não mudam. |
+| 2026-10-09 | CQL e BC passam a usar a ação na faixa observável do estado (`escala_acao='estado'`); `politicas.CQL`/`treinar_cql.py` viram a versão canônica | Decidido **depois** das ablações (seção 9): com a ação na faixa do Tier, o crítico extrapola fora da faixa de dados do estado e o ator fica entre duas modas (Low Ticket ~50% do ótimo); com a faixa do estado, ~85% (venda única) e ~98% (assinatura) em treino curto. É a mesma faixa em que `sl` e `bandido` já buscavam o preço, então a comparação fica mais justa. As ablações publicadas usam a versão anterior (`tier`) na base. |
 | 2026-10-08 | `oraculo_obs` passa a maximizar o % do ótimo, não o lucro médio em US$ | Erro de definição: maximizando US$, o cenário de lucro maior dominava e uma política observável (ε-greedy) passou do "teto". Na venda única o teto sobe de 83,6% para 88,9% (Low: 67% → 78%). |
 
 ## Como reproduzir
