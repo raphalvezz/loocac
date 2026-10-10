@@ -11,6 +11,12 @@ do simulador nos 144 estados de avaliação.
 O FQE é ajustado nos 20% finais do dataset, que os agentes NÃO usaram no treino.
 Com γ = 0 (decisões independentes), Q^π(s, a) é o lucro esperado do par.
 
+Escala da recompensa: o FQE aprende lucro / lucro médio da chave de estado − 1 e a
+estimativa volta para US$ multiplicando pela mesma média. Com a padronização
+global (lucros de centenas a milhões), o erro da regressão engolia os estados de
+lucro pequeno: a ordem entre estados ficava certa (correlação ~1), mas o % do
+ótimo saía com erro de centenas de pontos.
+
 Entradas: cql_<modelo>.* e bc_<modelo>.* (treinar_cql.py / treinar_bc.py) e
 sl_dataset_combined.csv, na pasta atual.
 Saída:    resultados/fqe.csv (+ fqe_por_estado.csv)
@@ -34,15 +40,17 @@ def ajustar_fqe(agente, teste, passos):
     from d3rlpy.ope import FQE, FQEConfig
 
     lucro = teste[pol.ALVO[agente.modelo]].to_numpy(dtype=float)
-    media, desvio = float(lucro.mean()), float(lucro.std())
+    chave = [str(k) for k in pol.chaves(agente.modelo, teste)]
+    media_por_chave = pd.Series(lucro).groupby(chave).mean().to_dict()
+    relativo = lucro / np.array([media_por_chave[k] for k in chave]) - 1
     episodio = Episode(agente.prep.transform(teste),
                        agente.preco_para_acao(teste['Preco_Amostra'].to_numpy(), teste).reshape(-1, 1).astype(np.float32),
-                       ((lucro - media) / desvio).reshape(-1, 1).astype(np.float32), True)
+                       relativo.reshape(-1, 1).astype(np.float32), True)
     buffer = ReplayBuffer(FIFOBuffer(limit=len(teste)), episodes=[episodio])
     fqe = FQE(algo=agente.algo, config=FQEConfig(gamma=0.0, learning_rate=1e-4), device='cpu')
     fqe.fit(buffer, n_steps=passos, n_steps_per_epoch=min(1000, passos),
             logger_adapter=d3rlpy.logging.NoopAdapterFactory(), show_progress=False)
-    return fqe, media, desvio
+    return fqe, media_por_chave
 
 
 def main():
@@ -60,12 +68,13 @@ def main():
         otimo = av.lucros(av.consultar(pol.Oraculo(modelo, cenarios), estados), estados, cenarios, modelo)
         for classe, prefixo in [(pol.CQL, f'cql_{modelo}'), (pol.BC, f'bc_{modelo}')]:
             agente = classe.carregar(prefixo)
-            fqe, media, desvio = ajustar_fqe(agente, teste, args.passos)
+            fqe, media_por_chave = ajustar_fqe(agente, teste, args.passos)
             sem_cenario = estados.drop(columns='Cenario')
             precos = agente.precos(sem_cenario)
             obs = agente.prep.transform(sem_cenario)
             acoes = agente.preco_para_acao(precos, sem_cenario).reshape(-1, 1).astype(np.float32)
-            estimado = fqe.predict_value(obs, acoes) * desvio + media
+            escala = np.array([media_por_chave[str(k)] for k in pol.chaves(modelo, sem_cenario)])
+            estimado = (fqe.predict_value(obs, acoes) + 1) * escala
             verdadeiro = av.lucros(precos, estados, cenarios, modelo)
             pct_est, pct_ver = 100 * np.mean(estimado / otimo), 100 * np.mean(verdadeiro / otimo)
             linhas.append({
