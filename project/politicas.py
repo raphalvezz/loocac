@@ -39,8 +39,8 @@ def por_estado_unico(funcao, estados):
     distintos dá o mesmo resultado com muito menos custo. Só para políticas
     determinísticas por estado.
     """
-    colunas = [c for c in COLUNAS_ESTADO + ['Cenario'] if c in estados.columns]
-    codigos, _ = pd.factorize(pd.MultiIndex.from_frame(estados[colunas].astype(str)))
+    # Todas as colunas: no ambiente sequencial o estado inclui reputação e período
+    codigos, _ = pd.factorize(pd.MultiIndex.from_frame(estados.astype(str)))
     primeiras = pd.Series(range(len(codigos))).groupby(codigos).first().to_numpy()
     return np.asarray(funcao(estados.iloc[primeiras].reset_index(drop=True)))[codigos]
 
@@ -160,15 +160,16 @@ class RegressorGrade(Politica):
     parametros = {}
     escala_log = False  # alvo e features numéricas em log
 
-    def __init__(self, modelo, cenarios, n_grade=200):
+    def __init__(self, modelo, cenarios, n_grade=200, extras=()):
         super().__init__(modelo, cenarios)
         self.n_grade = n_grade
+        self.extras = tuple(extras)  # colunas numéricas extras do estado (ex.: reputação)
 
     def nomes_features(self):
         nomes = list(self.ohe.get_feature_names_out()) + ['Orcamento']
         if self.modelo == 'assinatura':
             nomes += MEMORIA
-        return nomes + ['Preco']
+        return nomes + list(getattr(self, 'extras', ())) + ['Preco']
 
     def _X(self, estados, preco):
         f = np.log if self.escala_log else np.asarray
@@ -177,6 +178,8 @@ class RegressorGrade(Politica):
                   f(estados[['Orcamento']].to_numpy(dtype=float))]
         if self.modelo == 'assinatura':
             partes.append(estados[MEMORIA].to_numpy(dtype=float))
+        if getattr(self, 'extras', ()):
+            partes.append(estados[list(self.extras)].to_numpy(dtype=float))
         partes.append(f(np.asarray(preco, dtype=float)).reshape(-1, 1))
         return np.column_stack(partes)
 
@@ -227,8 +230,9 @@ class SL(RegressorGrade):
 class PreprocessadorEstado:
     """OHE das categóricas + padronização do orçamento (+ memória na assinatura)."""
 
-    def __init__(self, modelo, ohe=None, scaler_estado=None, scaler_memoria=None):
+    def __init__(self, modelo, ohe=None, scaler_estado=None, scaler_memoria=None, extras=()):
         self.modelo, self.ohe, self.scaler_estado, self.scaler_memoria = modelo, ohe, scaler_estado, scaler_memoria
+        self.extras = tuple(extras)  # colunas numéricas já em escala ~1 (ex.: reputação, período)
 
     def fit(self, dados):
         self.ohe = OneHotEncoder(handle_unknown='ignore', sparse_output=False).fit(dados[CATEGORICAS])
@@ -242,6 +246,8 @@ class PreprocessadorEstado:
                   self.scaler_estado.transform(estados[list(self.scaler_estado.feature_names_in_)])]
         if self.modelo == 'assinatura':
             partes.append(self.scaler_memoria.transform(estados[list(self.scaler_memoria.feature_names_in_)]))
+        if getattr(self, 'extras', ()):
+            partes.append(estados[list(self.extras)].to_numpy(dtype=float))
         return np.concatenate(partes, axis=1).astype(np.float32)
 
 
@@ -257,8 +263,9 @@ class AgenteD3(Politica):
     treinavel = True
     gpu = 'opcional (acelera o treino)'
 
-    def __init__(self, modelo, cenarios, escala_acao='estado'):
+    def __init__(self, modelo, cenarios, escala_acao='estado', extras=()):
         super().__init__(modelo, cenarios)
+        self.extras = tuple(extras)
         self.faixas_tier = sim.faixas_tier(cenarios)
         if escala_acao == 'global':
             lo = min(f[0] for f in self.faixas_tier.values())
@@ -285,11 +292,20 @@ class AgenteD3(Politica):
 
     def _buffer(self, treino, recompensas):
         from d3rlpy.dataset import Episode, FIFOBuffer, ReplayBuffer
-        self.prep = PreprocessadorEstado(self.modelo).fit(treino)
-        acoes = self.preco_para_acao(treino['Preco_Amostra'].to_numpy(), treino).reshape(-1, 1)
-        episodio = Episode(self.prep.transform(treino), acoes.astype(np.float32),
-                           np.asarray(recompensas, dtype=np.float32).reshape(-1, 1), True)
-        return ReplayBuffer(FIFOBuffer(limit=len(treino)), episodes=[episodio])
+        self.prep = PreprocessadorEstado(self.modelo, extras=self.extras).fit(treino)
+        obs = self.prep.transform(treino)
+        acoes = self.preco_para_acao(treino['Preco_Amostra'].to_numpy(), treino).reshape(-1, 1).astype(np.float32)
+        recompensas = np.asarray(recompensas, dtype=np.float32).reshape(-1, 1)
+        if 'episodio' not in treino.columns:
+            # Decisões independentes: um único episódio (com gamma=0 a ordem não importa)
+            episodios = [Episode(obs, acoes, recompensas, True)]
+        else:
+            # Ambiente sequencial: um episódio por campanha, na ordem dos períodos
+            episodios = []
+            for idx in treino.groupby('episodio', sort=False).indices.values():
+                idx = idx[np.argsort(treino['passo'].to_numpy()[idx])]
+                episodios.append(Episode(obs[idx], acoes[idx], recompensas[idx], True))
+        return ReplayBuffer(FIFOBuffer(limit=len(treino)), episodes=episodios)
 
     def precos(self, estados):
         acoes = self.algo.predict(self.prep.transform(estados)).reshape(-1)
@@ -333,8 +349,8 @@ class CQL(AgenteD3):
 
     def __init__(self, modelo, cenarios, n_passos=50000, passos_por_epoca=1000, paciencia=20,
                  avaliador=None, gamma=0.0, peso_conservador=5.0, escala_acao='estado',
-                 escala_recompensa='global'):
-        super().__init__(modelo, cenarios, escala_acao)
+                 escala_recompensa='global', extras=()):
+        super().__init__(modelo, cenarios, escala_acao, extras)
         if escala_recompensa not in ('global', 'log', 'estado'):
             raise ValueError(escala_recompensa)
         self.gamma, self.peso_conservador = gamma, peso_conservador
@@ -434,8 +450,8 @@ class BC(AgenteD3):
     nome = 'bc'
     explicabilidade = 'baixa: rede neural que reproduz os preços do histórico'
 
-    def __init__(self, modelo, cenarios, n_passos=5000, escala_acao='estado'):
-        super().__init__(modelo, cenarios, escala_acao)
+    def __init__(self, modelo, cenarios, n_passos=5000, escala_acao='estado', extras=()):
+        super().__init__(modelo, cenarios, escala_acao, extras)
         self.n_passos = n_passos
 
     def treinar(self, dados, semente):

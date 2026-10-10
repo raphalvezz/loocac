@@ -93,6 +93,34 @@ def _base(cenario):
     c0 = 100.0 * np.log1p(cenario['Budget']) / np.log1p(1000)  # demanda base ~ orçamento
     return a0, c0
 
+# Forma funcional da demanda. 'logistica' é o simulador v1.0 (padrão, congelado).
+# 'linear' é a forma alternativa do teste de robustez (avaliar_robustez.py):
+# D(p) = c0 · max(0, 1 − x/x_c), com o preço de saturação x_c por contexto calibrado
+# para o ótimo cair em x* = 1/m (dentro da faixa). Venda única: lucro parabólico,
+# x_c = 2x* − CPA/a0. Assinatura: x_c = x*(2 − 0,4x*)/(1 − 0,4x*) (anula a derivada
+# de (1 − x/x_c)·x·e^(−0,4x), ignorando o CPA). Uma isoelástica foi descartada antes
+# de qualquer treino: a curva de lucro ficava quase plana (meio da faixa ~98% do
+# ótimo), e o teste não distinguiria as políticas. Não muda nada quando não é usada.
+FORMAS_DEMANDA = ('logistica', 'linear')
+FORMA_DEMANDA = 'logistica'
+
+def usar_forma(forma):
+    """Troca a forma da demanda para todo o simulador (geração, oráculos, avaliação)."""
+    global FORMA_DEMANDA
+    if forma not in FORMAS_DEMANDA:
+        raise ValueError(f"Forma desconhecida: {forma}")
+    FORMA_DEMANDA = forma
+
+def _demanda_linear(x, c0, cenario, regiao, plataforma, modelo):
+    a0, _ = _base(cenario)
+    x_otimo = 1.0 / multiplicador_elasticidade(regiao, plataforma)
+    if modelo == 'venda_unica':
+        x_sat = 2 * x_otimo - cenario['CPA_Target'] / a0
+    else:
+        k = ELASTICIDADE_CHURN
+        x_sat = x_otimo * (2 - k * x_otimo) / (1 - k * x_otimo)
+    return c0 * np.maximum(0.0, 1 - x / x_sat)
+
 def lucro_esperado(preco, cenario, regiao, plataforma, modelo='venda_unica'):
     """Lucro esperado (sem ruído). Aceita preço escalar ou array.
 
@@ -107,8 +135,11 @@ def lucro_esperado(preco, cenario, regiao, plataforma, modelo='venda_unica'):
     a0, c0 = _base(cenario)
     cpa = cenario['CPA_Target']
     x = preco / a0
-    w = CENTRO_WTP[modelo] / multiplicador_elasticidade(regiao, plataforma)
-    demanda = 2 * c0 / (1 + np.exp(INCLINACAO_WTP * (x - w)))
+    if FORMA_DEMANDA == 'linear':
+        demanda = _demanda_linear(x, c0, cenario, regiao, plataforma, modelo)
+    else:
+        w = CENTRO_WTP[modelo] / multiplicador_elasticidade(regiao, plataforma)
+        demanda = 2 * c0 / (1 + np.exp(INCLINACAO_WTP * (x - w)))
     if modelo == 'venda_unica':
         return demanda * (preco - cpa)
     churn = np.clip(CHURN_BASE * np.exp(ELASTICIDADE_CHURN * (x - 1)), 0.01, 0.95)

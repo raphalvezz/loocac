@@ -64,3 +64,27 @@ def test_acao_ida_e_volta():
         acoes = sim.preco_para_acao(precos, tier, faixas)
         assert acoes.min() == pytest.approx(-1) and acoes.max() == pytest.approx(1)
         assert sim.acao_para_preco(acoes, tier, faixas) == pytest.approx(precos)
+
+
+@pytest.fixture
+def forma_linear():
+    sim.usar_forma('linear')
+    yield
+    sim.usar_forma('logistica')
+
+
+@pytest.mark.parametrize("modelo", ['venda_unica', 'assinatura'])
+def test_forma_linear_otimo_interior(forma_linear, modelo):
+    """A forma alternativa (teste de robustez) também tem ótimo dentro da faixa."""
+    for c in C:
+        for r in sim.REGIOES:
+            for p in sim.PLATAFORMAS:
+                p_otimo, _ = sim.preco_otimo(c, r, p, modelo)
+                pos = (p_otimo - c['Price_Min']) / (c['Price_Max'] - c['Price_Min'])
+                assert 0.02 < pos < 0.98
+
+
+def test_forma_padrao_e_logistica():
+    assert sim.FORMA_DEMANDA == 'logistica'
+    with pytest.raises(ValueError):
+        sim.usar_forma('cubica')
