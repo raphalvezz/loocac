@@ -144,6 +144,32 @@ Resultados em `resultados/ablacoes_cql*.csv`, `resultados/diagnostico_cql.csv`
 e `docs/figuras/diagnostico_cql_low_ticket.png`. São de treino curto: servem
 para comparar configurações entre si, não como resultado final do CQL.
 
+## 9b. Testes de ambiente (registrados em 2026-10-10, antes dos resultados)
+
+**Ambiente sequencial** (`sequencial.py`, `avaliar_sequencial.py`): campanhas de 12
+períodos; o preço muda a reputação ρ (κ = 0,15; preço justo = 0,85·p\*) e a demanda
+futura. Ótimo exato por programação dinâmica; métrica = lucro total da campanha em %
+desse ótimo; oráculo míope (~90%) mostra quanto vale planejar. Políticas: aleatório,
+meio da faixa, SL, bandido, BC, CQL γ = 0 e CQL γ = 0,95 (recompensa por contexto,
+20.000 passos, checkpoint pelo lucro total simulado), 3 sementes.
+- **S1 (o RL se justifica):** `cql_g095 − bandido` > 0 no total.
+- **S2 (o ganho vem de planejar):** `cql_g095 − cql_g0` > 0.
+Se S1 falhar, a conclusão do TCC é que, mesmo com efeito intertemporal, o RL
+offline não superou o bandido nestes dados.
+
+**Robustez à forma da demanda** (`avaliar_robustez.py`): a mesma comparação da
+seção 5 com demanda linear (simulador `usar_forma('linear')`), 3 sementes, CQL com
+20.000 passos. A conclusão é robusta se a ordem bandido/BC/CQL e os critérios C1–C3
+se repetirem.
+
+**Deslocamento de público** (`avaliar_deslocamento.py`): treino só com North
+America/Europe, avaliação em Asia/South America (mais sensíveis a preço) e na
+origem; checkpoint do CQL escolhido só na origem. Mede a queda origem − destino.
+
+**FQE** (`avaliar_fqe.py`): estimativa fora da política (d3rlpy FQE, γ = 0) do
+lucro do CQL e do BC usando só os 20% de dados não usados no treino, comparada com
+o lucro verdadeiro do simulador.
+
 ## 10. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),
