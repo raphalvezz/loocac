@@ -215,6 +215,26 @@ o lucro verdadeiro do simulador.
   da assinatura (−0,09 p.p.). Na assinatura tudo fica entre 97% e 99,4%: o problema
   continua fácil para qualquer método razoável.
 
+### Resultado do deslocamento de público (2026-10-10, 3 sementes)
+
+% do ótimo na origem → no destino; queda pareada em p.p. (IC 95%):
+
+| política | venda única | queda | assinatura | queda |
+|---|---|---|---|---|
+| meio_faixa | 80,5 → 80,6 | 0,0 | 98,1 → 96,8 | 1,3 |
+| sl | 77,8 → 73,3 | 4,5 (3,0 a 6,0) | 94,4 → 92,1 | 2,3 (−1,4 a 6,1) |
+| bandido | 82,6 → 70,5 | **12,0** (10,5 a 13,5) | 98,0 → 84,0 | **13,9** (4,0 a 23,9) |
+| bc | 83,4 → 82,4 | 1,0 (0,8 a 1,2) | 97,6 → 97,9 | −0,3 |
+| cql | 85,3 → 83,1 | 2,2 (0,7 a 3,8) | 98,0 → 98,0 | 0,0 |
+| oraculo_obs | 89,1 → 88,6 | 0,5 | 100 → 100 | 0,0 |
+
+- O bandido é o mais frágil: perde 12–14 p.p. quando o público muda e cai abaixo da
+  regra fixa `meio_faixa`. O CQL e o BC quase não perdem.
+- Hipótese (não testada): o CQL e o BC ficam presos à faixa de preço observada nos
+  dados (o termo conservador e a imitação puxam para a coleta), enquanto o bandido
+  extrapola a curva de lucro aprendida com a região como variável, e a região do
+  destino é uma categoria nunca vista.
+
 ## 10. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),
