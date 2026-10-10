@@ -170,6 +170,31 @@ origem; checkpoint do CQL escolhido só na origem. Mede a queda origem − desti
 lucro do CQL e do BC usando só os 20% de dados não usados no treino, comparada com
 o lucro verdadeiro do simulador.
 
+### Resultado do ambiente sequencial (2026-10-10, 3 sementes)
+
+| política | Low Ticket | High Ticket | Todos |
+|---|---|---|---|
+| aleatorio | 56,3 | 72,0 | 64,2 |
+| meio_faixa | 62,9 | 84,4 | 73,6 |
+| sl | 65,3 | 84,1 | 74,7 |
+| bandido | 61,1 | 89,9 | 75,5 |
+| bc | 66,8 | 86,8 | 76,8 |
+| cql_g0 | 64,7 | 91,2 | 77,9 |
+| **cql_g095** | **70,7** | **96,9** | **83,8** |
+| oraculo_miope | 90,5 | 89,0 | 89,7 |
+
+- **S1 confirmado:** `cql_g095 − bandido` = +8,3 p.p. (IC 95% 7,9 a 8,7), positivo nos dois tiers.
+- **S2 confirmado:** `cql_g095 − cql_g0` = +5,9 p.p. (5,1 a 6,7). Com γ = 0 o CQL fica
+  junto do bandido (+2,4 p.p.); o ganho vem de planejar.
+- A trajetória de preço (`docs/figuras/sequencial_trajetorias.png`) mostra o motivo: o
+  CQL com γ = 0,95 começa abaixo do preço míope e sobe ao longo da campanha (como a
+  programação dinâmica, de forma menos intensa); bandido, SL, BC e CQL γ = 0 cobram
+  um preço quase constante.
+- Limites: no Low Ticket ainda fica 20 p.p. abaixo do oráculo míope (que conhece o
+  cenário); o checkpoint é escolhido com o simulador (mesma regra da seção 4), algo
+  que não existe em produção; o efeito intertemporal (κ, λ) é uma hipótese do
+  ambiente, não um dado.
+
 ## 10. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),
