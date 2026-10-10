@@ -1,79 +1,144 @@
-import os
-import time
+"""
+LOCAC - API de precificação.
+
+Quatro métodos, todos atrás da mesma interface (politicas.Politica.precos):
+  rl       CQL canônico (treinar_cql.py: cql_venda_unica / cql_assinatura)
+  sl       regressor supervisionado + grade de preços (SL_FINAL)
+  bandido  bandido contextual LightGBM (treinar_bandido.py)
+  bc       behavior cloning, imitação do histórico (treinar_bc.py)
+
+Toda recomendação passa pelo MESMO caminho: preço do método -> regra de faixa
+(KBS) -> lucro previsto pelo próprio método (quando ele tem modelo de lucro)
+-> avaliação comum: lucro do SL e risco (VaR/CVaR 5%) dos quantis do crítico
+do RL, ambos no preço final. Assim os métodos são comparáveis entre si.
+
+Segurança mínima (protótipo acadêmico):
+  - LOCAC_API_KEY: chave exigida no header X-API-Key em todas as rotas, exceto
+    GET /. Sem a variável, uma chave aleatória é gerada e impressa no início.
+  - LOCAC_CORS_ORIGINS: origens permitidas, separadas por vírgula
+    (padrão: o servidor de desenvolvimento do Vite em localhost:5173).
+  - Entradas validadas (categorias fechadas, limites numéricos).
+  - /configure_market exige a chave e recusa um retreino enquanto outro roda.
+Não há autenticação de usuários nem proteção de dados: ver Limitações.
+"""
+
 import json
-import joblib
-import d3rlpy
-import torch
-import numpy as np
-import pandas as pd
-import uvicorn
+import os
+import secrets
 import subprocess
 import sys
-from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
+import threading
+import time
+from contextlib import asynccontextmanager
+from typing import Any, Dict, List, Literal, Optional
+
+import joblib
+import numpy as np
+import pandas as pd
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Dict, Any, List, Optional
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-# --- 1. Inicialização do App FastAPI (ISSO DEVE VIR PRIMEIRO) ---
-app = FastAPI(title="LOCAC API de Precificação")
+import bandido  # noqa: F401  (classes necessárias para carregar bandido_*.joblib)
+import politicas as pol
+import simulador as sim
 
-# Configuração do CORS
+# --- 1. Configuração e segurança --------------------------------------------
+API_KEY = os.environ.get("LOCAC_API_KEY") or secrets.token_urlsafe(24)
+if "LOCAC_API_KEY" not in os.environ:
+    print(f"⚠️  LOCAC_API_KEY não definida; chave desta execução: {API_KEY}")
+CORS_ORIGINS = [o.strip() for o in os.environ.get(
+    "LOCAC_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if o.strip()]
+
+@asynccontextmanager
+async def ciclo_de_vida(_app):
+    load_models()  # definida abaixo; roda quando o servidor sobe
+    yield
+
+
+app = FastAPI(title="LOCAC API de Precificação", lifespan=ciclo_de_vida)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "X-API-Key"],
 )
 
-# --- 2. Definição do Estado Global ---
+
+def exigir_chave(x_api_key: Optional[str] = Header(default=None)):
+    if not x_api_key or not secrets.compare_digest(x_api_key, API_KEY):
+        raise HTTPException(status_code=401, detail="Chave de API ausente ou inválida (header X-API-Key).")
+
+
+METODOS = ("rl", "sl", "bandido", "bc")
+COBRANCAS = ("venda_unica", "assinatura")
+Metodo = Literal["rl", "sl", "bandido", "bc"]
+Cobranca = Literal["venda_unica", "assinatura"]
+
 models_state: Dict[str, Any] = {}
+retreino_em_andamento = threading.Event()
 
-# --- 3. Modelos de Entrada (Pydantic) ---
+
+# --- 2. Modelos de entrada e saída -------------------------------------------
 class CampaignInput(BaseModel):
-    Regiao: str
-    Plataforma: str
-    Tier: str
-    Orcamento: float
-    Idade: str
-    Genero: str
-    Conteudo: str
-    # Exigidos pelos encoders (ohe_encoder / sl_ohe_encoder)
-    Tipo_Produto: str = "InfoProduto"
-    Modelo_Cobranca: str = "Venda Unica"
-    Complexidade_Oferta: str = "Media"
-    # Features de Assinatura opcionais. Quando não enviadas, usa-se a média
-    # do treino (scaler_assinatura_memoria.mean_), que padronizada vira 0.
-    dias_desde_ultima_interacao: Optional[float] = None
-    clv_estimate_percentile: Optional[float] = None
-    avg_price_offered_segment_90d: Optional[float] = None
-    price_volatility_30d: Optional[float] = None
+    model_config = ConfigDict(extra="forbid")
 
-class PredictionResponse(BaseModel):
-    modelo: str
+    Regiao: Literal[tuple(sim.REGIOES)]
+    Plataforma: Literal[tuple(sim.PLATAFORMAS)]
+    Tier: Literal["Low Ticket", "High Ticket"]
+    Orcamento: float = Field(gt=0, le=1_000_000)
+    Idade: str = Field(default=sim.CATEGORICAS_FIXAS["Idade"], max_length=16)
+    Genero: str = Field(default=sim.CATEGORICAS_FIXAS["Genero"], max_length=16)
+    Conteudo: str = Field(default=sim.CATEGORICAS_FIXAS["Conteudo"], max_length=16)
+    Tipo_Produto: str = Field(default=sim.CATEGORICAS_FIXAS["Tipo_Produto"], max_length=32)
+    Modelo_Cobranca: str = Field(default=sim.CATEGORICAS_FIXAS["Modelo_Cobranca"], max_length=32)
+    Complexidade_Oferta: str = Field(default=sim.CATEGORICAS_FIXAS["Complexidade_Oferta"], max_length=16)
+    # Memória da assinatura. Ausente -> média do treino (padronizada vira 0).
+    dias_desde_ultima_interacao: Optional[float] = Field(default=None, ge=0, le=10_000)
+    clv_estimate_percentile: Optional[float] = Field(default=None, ge=0, le=1)
+    avg_price_offered_segment_90d: Optional[float] = Field(default=None, ge=0, le=1_000_000)
+    price_volatility_30d: Optional[float] = Field(default=None, ge=0, le=1_000)
+
+
+class Recomendacao(BaseModel):
+    metodo: str
+    cobranca: str
     preco_recomendado: float
-    preco_rl_bruto: float  # saída do agente antes da regra de faixa (KBS)
-    lucro_estimado_sl: float
-    var_5_percent: float
-    cvar_5_percent: float
+    preco_bruto: float                       # saída do método antes da KBS
+    kbs_applied: bool
+    lucro_previsto_metodo: Optional[float]   # modelo de lucro do próprio método (BC não tem)
+    lucro_estimado_sl: Optional[float]       # avaliação comum: SL no preço final
+    var_5_percent: Optional[float]           # avaliação comum: quantis do crítico do RL
+    cvar_5_percent: Optional[float]
     latencia_ms: float
-    kbs_applied: bool = False
-    llm_explanation: str = "Explicação do LLM ainda não implementada."
+
 
 class MarketConfig(BaseModel):
-    lowMin: float
-    lowMax: float
-    highMin: float
-    highMax: float
-    budgetMin: float
-    budgetMax: float
+    model_config = ConfigDict(extra="forbid")
 
-# Faixas de preço por Tier (mesmos padrões do painel "Gêmeo Digital" da tela).
-# Se o painel já salvou um config_market.json, as faixas dele têm prioridade.
+    lowMin: float = Field(gt=0, le=1_000_000)
+    lowMax: float = Field(gt=0, le=1_000_000)
+    highMin: float = Field(gt=0, le=1_000_000)
+    highMax: float = Field(gt=0, le=1_000_000)
+    budgetMin: float = Field(gt=0, le=10_000_000)
+    budgetMax: float = Field(gt=0, le=10_000_000)
+
+    @model_validator(mode="after")
+    def faixas_validas(self):
+        for lo, hi in [("lowMin", "lowMax"), ("highMin", "highMax"), ("budgetMin", "budgetMax")]:
+            if getattr(self, lo) >= getattr(self, hi):
+                raise ValueError(f"{lo} deve ser menor que {hi}")
+        return self
+
+
+# --- 3. Regra de segurança de preço (KBS), igual para todos os métodos -------
+# Faixas por Tier (padrões do painel "Gêmeo Digital"); config_market.json tem prioridade.
 DEFAULT_PRICE_RANGES = {
     "Low Ticket": {"min": 10.0, "max": 97.0},
     "High Ticket": {"min": 497.0, "max": 5000.0},
 }
+
 
 def get_price_range(tier: str) -> Dict[str, float]:
     ranges = DEFAULT_PRICE_RANGES
@@ -86,251 +151,176 @@ def get_price_range(tier: str) -> Dict[str, float]:
         raise ValueError(f"Tier desconhecido: {tier}")
     return ranges[tier]
 
-def apply_kbs(preco: float, tier: str):
-    """Regra de negócio (KBS): limita o preço à faixa do Tier.
 
-    Não corrige a política do RL; apenas impede preços fora da faixa
-    (ex.: negativos). Retorna (preço, se a regra alterou o valor).
-    """
+def apply_kbs(preco: float, tier: str):
+    """Limita o preço à faixa do Tier. Retorna (preço, se a regra alterou o valor)."""
     faixa = get_price_range(tier)
     limitado = float(np.clip(preco, faixa["min"], faixa["max"]))
     return limitado, limitado != float(preco)
 
-# --- 4. Funcionalidades de Re-treino (Dinâmico) ---
+
+# --- 4. Carregamento dos modelos ---------------------------------------------
+ARQUIVOS_SL = {"venda_unica": "sl_profit_regressor_model.joblib", "assinatura": "sl_ltv_regressor_model.joblib"}
+
+
+def load_models():
+    """Carrega cada método de forma independente: um arquivo ausente desativa só ele."""
+    novo: Dict[str, Any] = {"metodos": {c: {} for c in COBRANCAS}, "erros": {}}
+    try:
+        # Média da memória da assinatura (valor padrão quando a tela não envia)
+        novo["scaler_assinatura_memoria"] = joblib.load("scaler_assinatura_memoria.joblib")
+    except FileNotFoundError as e:
+        novo["erros"]["base"] = f"arquivo ausente: {e.filename} (rode train_pipeline.py)"
+        models_state.clear()
+        models_state.update(novo)
+        print(f"❌ {novo['erros']['base']}")
+        return
+
+    for cob in COBRANCAS:
+        carregadores = {
+            "rl": lambda: pol.CQL.carregar(f"cql_{cob}"),
+            "sl": lambda: joblib.load(ARQUIVOS_SL[cob]),
+            "bandido": lambda: joblib.load(f"bandido_{cob}.joblib"),
+            "bc": lambda: pol.BC.carregar(f"bc_{cob}"),
+        }
+        for metodo, carregar in carregadores.items():
+            try:
+                novo["metodos"][cob][metodo] = carregar()
+            except Exception as e:  # arquivo ausente ou incompatível
+                novo["erros"][f"{metodo}/{cob}"] = str(e)
+
+    models_state.clear()
+    models_state.update(novo)
+    carregados = {c: sorted(m) for c, m in novo["metodos"].items()}
+    print(f"✅ Métodos carregados: {carregados}")
+    for chave, erro in novo["erros"].items():
+        print(f"   ⚠️  {chave}: {erro}")
+
+
+# --- 5. Recomendação ---------------------------------------------------------
+def estado_df(input_data: CampaignInput, cobranca: str) -> pd.DataFrame:
+    """Estado em uma linha de DataFrame (entrada comum a todos os métodos)."""
+    linha = input_data.model_dump()
+    if cobranca == "assinatura":
+        scaler_memoria = models_state["scaler_assinatura_memoria"]
+        for col, media in zip(scaler_memoria.feature_names_in_, scaler_memoria.mean_):
+            if linha.get(col) is None:
+                linha[col] = float(media)
+    return pd.DataFrame([linha])
+
+
+def politica(metodo: str, cobranca: str):
+    p = models_state.get("metodos", {}).get(cobranca, {}).get(metodo)
+    if p is None:
+        motivo = models_state.get("erros", {}).get(f"{metodo}/{cobranca}") or models_state.get("erros", {}).get("base")
+        raise HTTPException(status_code=503, detail=f"Método '{metodo}' indisponível para {cobranca}: {motivo}")
+    return p
+
+
+def risco(cobranca: str, estados: pd.DataFrame, preco: float):
+    """VaR/CVaR 5% do lucro no preço dado, pelos quantis do crítico do RL (avaliador comum)."""
+    rl = models_state.get("metodos", {}).get(cobranca, {}).get("rl")
+    if rl is None:
+        return None, None
+    quantis = rl.quantis_reais(estados, [preco]).ravel()
+    var_5 = float(np.quantile(quantis, 0.05))
+    return var_5, float(quantis[quantis <= var_5].mean())
+
+
+def lucro_previsto(p, cobranca: str, estados: pd.DataFrame, preco: float) -> Optional[float]:
+    if hasattr(p, "prever_lucro"):          # SL e bandido
+        return float(p.prever_lucro(estados, [preco])[0])
+    if isinstance(p, pol.CQL):              # média dos quantis do crítico
+        return float(p.quantis_reais(estados, [preco]).mean())
+    return None                             # BC não tem modelo de lucro
+
+
+def recomendar(metodo: str, cobranca: str, input_data: CampaignInput) -> Recomendacao:
+    inicio = time.perf_counter()
+    p = politica(metodo, cobranca)
+    estados = estado_df(input_data, cobranca)
+    try:
+        preco_bruto = float(p.precos(estados)[0])
+        preco, kbs = apply_kbs(preco_bruto, input_data.Tier)
+        sl = models_state["metodos"][cobranca].get("sl")
+        var_5, cvar_5 = risco(cobranca, estados, preco)
+        return Recomendacao(
+            metodo=metodo, cobranca=cobranca, preco_recomendado=preco, preco_bruto=preco_bruto,
+            kbs_applied=kbs, lucro_previsto_metodo=lucro_previsto(p, cobranca, estados, preco),
+            lucro_estimado_sl=float(sl.prever_lucro(estados, [preco])[0]) if sl is not None else None,
+            var_5_percent=var_5, cvar_5_percent=cvar_5,
+            latencia_ms=(time.perf_counter() - inicio) * 1000,
+        )
+    except Exception as e:
+        print(f"Erro em {metodo}/{cobranca}: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao recomendar com '{metodo}': {e}")
+
+
+# --- 6. Rotas ----------------------------------------------------------------
+@app.post("/recomendar", response_model=Recomendacao, dependencies=[Depends(exigir_chave)])
+def rota_recomendar(input_data: CampaignInput, metodo: Metodo = Query("rl"),
+                    cobranca: Cobranca = Query("venda_unica")):
+    return recomendar(metodo, cobranca, input_data)
+
+
+@app.post("/comparar", response_model=List[Recomendacao], dependencies=[Depends(exigir_chave)])
+def rota_comparar(input_data: CampaignInput, cobranca: Cobranca = Query("venda_unica")):
+    """Uma recomendação por método disponível, para a exibição comparada na tela."""
+    disponiveis = [m for m in METODOS if m in models_state.get("metodos", {}).get(cobranca, {})]
+    if not disponiveis:
+        raise HTTPException(status_code=503, detail="Nenhum método carregado (rode train_pipeline.py).")
+    return [recomendar(m, cobranca, input_data) for m in disponiveis]
+
+
+# Rotas antigas, mantidas por compatibilidade (agora aceitam ?metodo=)
+@app.post("/recommend_price", response_model=Recomendacao, dependencies=[Depends(exigir_chave)])
+def recommend_price(input_data: CampaignInput, metodo: Metodo = Query("rl")):
+    return recomendar(metodo, "venda_unica", input_data)
+
+
+@app.post("/recommend_subscription_price", response_model=Recomendacao, dependencies=[Depends(exigir_chave)])
+def recommend_subscription_price(input_data: CampaignInput, metodo: Metodo = Query("rl")):
+    return recomendar(metodo, "assinatura", input_data)
+
 
 def run_retraining_pipeline():
-    """Função background que executa o pipeline de treino"""
+    """Roda o pipeline de treino e recarrega os modelos ao final."""
     try:
         print("🔄 [BACKGROUND] Iniciando pipeline de atualização...")
-        # Executa o script train_pipeline.py
-        # (Certifique-se de que você criou este arquivo na pasta project/)
         subprocess.check_call([sys.executable, "train_pipeline.py"])
-        print("✅ [BACKGROUND] Pipeline concluído com sucesso.")
-        
-        # Opcional: Recarregar modelos aqui seria o ideal, mas requer 
-        # reiniciar o worker ou ter uma função de reload segura.
-        # Para este MVP, o usuário perceberá a mudança no próximo restart ou request
-        # se o load_models for chamado dinamicamente (não implementado aqui para simplicidade).
+        load_models()
+        print("✅ [BACKGROUND] Pipeline concluído e modelos recarregados.")
     except Exception as e:
-        print(f"❌ [BACKGROUND] Erro crítico no pipeline: {e}")
+        print(f"❌ [BACKGROUND] Erro no pipeline: {e}")
+    finally:
+        retreino_em_andamento.clear()
 
-@app.post("/configure_market")
-async def configure_market(config: MarketConfig, background_tasks: BackgroundTasks):
-    print(f"📝 Recebendo nova configuração de mercado: {config}")
-    
-    # 1. Salvar JSON para o Generator_NEW ler
-    new_settings = {
+
+@app.post("/configure_market", dependencies=[Depends(exigir_chave)])
+def configure_market(config: MarketConfig, background_tasks: BackgroundTasks):
+    if retreino_em_andamento.is_set():
+        raise HTTPException(status_code=409, detail="Já há um retreino em andamento.")
+    novas = {
         "price_ranges": {
             "Low Ticket": {"min": config.lowMin, "max": config.lowMax},
-            "High Ticket": {"min": config.highMin, "max": config.highMax}
+            "High Ticket": {"min": config.highMin, "max": config.highMax},
         },
         "budget_range": {"min": config.budgetMin, "max": config.budgetMax},
-        "cpa_ratio_range": [0.20, 0.45]
     }
-    
     try:
         with open("config_market.json", "w") as f:
-            json.dump(new_settings, f, indent=4)
-    except Exception as e:
+            json.dump(novas, f, indent=4)
+    except OSError as e:
         raise HTTPException(status_code=500, detail=f"Erro ao salvar config: {e}")
-        
-    # 2. Disparar pipeline em segundo plano
+    retreino_em_andamento.set()
     background_tasks.add_task(run_retraining_pipeline)
-    
     return {"status": "accepted", "message": "Configuração salva. Re-treinamento iniciado em background."}
 
-# --- 5. Evento de Startup (Carregar os Modelos) ---
-@app.on_event("startup")
-async def load_models():
-    print("Iniciando servidor...")
-    global models_state
-    
-    artifact_paths = {
-        "cql_venda_unica": "modelo_rl_final.d3",
-        "cql_assinatura": "modelo_rl_assinatura.d3",
-        "sl_profit": "sl_profit_regressor_model.joblib",
-        "sl_ohe": "sl_ohe_encoder.joblib",
-        "ohe": "ohe_encoder.joblib",
-        "scaler_estado": "scaler_estado.joblib",
-        "scaler_acao": "scaler_acao.joblib",
-        "scaler_recompensa": "scaler_recompensa.joblib",
-        "scaler_assinatura_memoria": "scaler_assinatura_memoria.joblib",
-        "scaler_assinatura_acao": "scaler_assinatura_acao.joblib",
-        "scaler_assinatura_recompensa": "scaler_assinatura_recompensa.joblib",
-        "colunas_estado_base": "colunas_estado_base.json",
-        "colunas_estado_assinatura": "colunas_estado_assinatura.json",
-    }
-    
-    print("Carregando artefatos de IA...")
-    try:
-        # Carrega metadados
-        with open(artifact_paths["colunas_estado_base"], 'r') as f:
-            models_state["colunas_estado_base"] = json.load(f)
-        with open(artifact_paths["colunas_estado_assinatura"], 'r') as f:
-            models_state["colunas_estado_assinatura"] = json.load(f)
-            
-        # Carrega Scalers
-        models_state["ohe"] = joblib.load(artifact_paths["ohe"])
-        models_state["scaler_estado"] = joblib.load(artifact_paths["scaler_estado"])
-        models_state["scaler_acao"] = joblib.load(artifact_paths["scaler_acao"])
-        models_state["scaler_recompensa"] = joblib.load(artifact_paths["scaler_recompensa"])
-        models_state["scaler_assinatura_memoria"] = joblib.load(artifact_paths["scaler_assinatura_memoria"])
-        models_state["scaler_assinatura_acao"] = joblib.load(artifact_paths["scaler_assinatura_acao"])
-        models_state["scaler_assinatura_recompensa"] = joblib.load(artifact_paths["scaler_assinatura_recompensa"])
-
-        # Carrega Modelos
-        models_state["sl_ohe"] = joblib.load(artifact_paths["sl_ohe"])
-        models_state["sl_profit"] = joblib.load(artifact_paths["sl_profit"])
-        models_state["cql_venda_unica"] = d3rlpy.load_learnable(artifact_paths["cql_venda_unica"], device="cpu")
-        models_state["cql_assinatura"] = d3rlpy.load_learnable(artifact_paths["cql_assinatura"], device="cpu")
-
-        print("✅ SUCESSO: Todos os modelos carregados.")
-
-    except FileNotFoundError as e:
-        print(f"❌ ERRO FATAL: Arquivo não encontrado: {e.filename}")
-        # Não damos raise aqui para permitir que o servidor suba e receba a config inicial
-        # mas os endpoints de inferência vão falhar se chamados.
-    except Exception as e:
-        print(f"❌ ERRO FATAL inesperado: {e}")
-
-# --- 6. Função de Pré-processamento ---
-def preprocess_input(input_data: CampaignInput, feature_type: str) -> np.ndarray:
-    if "ohe" not in models_state:
-        raise ValueError("Modelos não carregados. Configure o mercado primeiro.")
-
-    ohe = models_state["ohe"]
-    scaler_estado = models_state["scaler_estado"]
-    colunas_estado = models_state["colunas_estado_base"]
-    
-    if feature_type == "assinatura":
-        scaler_memoria = models_state["scaler_assinatura_memoria"]
-        colunas_estado = models_state["colunas_estado_assinatura"]
-
-    input_dict = input_data.model_dump()
-    if feature_type == "assinatura":
-        # Memória ausente -> média do treino, para não sair da distribuição vista pelo modelo
-        for col, media in zip(scaler_memoria.feature_names_in_, scaler_memoria.mean_):
-            if input_dict.get(col) is None:
-                input_dict[col] = float(media)
-    df = pd.DataFrame([input_dict])
-
-    # Transformações
-    categorical_cols = ohe.feature_names_in_
-    categ = ohe.transform(df[categorical_cols])
-    if hasattr(categ, "toarray"):  # encoder pode ter sparse_output=True ou False
-        categ = categ.toarray()
-    df_categ = pd.DataFrame(categ, columns=ohe.get_feature_names_out())
-    
-    numeric_cols_base = scaler_estado.feature_names_in_
-    df_numeric_base = pd.DataFrame(scaler_estado.transform(df[numeric_cols_base]), columns=numeric_cols_base)
-
-    df_processed = pd.concat([df_categ, df_numeric_base], axis=1)
-
-    if feature_type == "assinatura":
-        numeric_cols_memoria = scaler_memoria.feature_names_in_
-        df_numeric_memoria = pd.DataFrame(scaler_memoria.transform(df[numeric_cols_memoria]), columns=numeric_cols_memoria)
-        df_processed = pd.concat([df_processed, df_numeric_memoria], axis=1)
-
-    df_final_state = df_processed.reindex(columns=colunas_estado, fill_value=0)
-    return df_final_state.to_numpy().astype(np.float32)
-
-def get_quantiles(algo, obs: np.ndarray, act: np.ndarray) -> np.ndarray:
-    """Retorna os quantis (n_quantiles=64) do crítico QR para o par (estado, ação)."""
-    q = algo.impl._q_func_forwarder._forwarders[0]._q_func
-    q.eval()
-    with torch.no_grad():
-        out = q(
-            torch.tensor(obs, dtype=torch.float32).reshape(1, -1),
-            torch.tensor(act, dtype=torch.float32).reshape(1, -1),
-        )
-    return out.quantiles.cpu().numpy().ravel()
-
-def compute_risk(algo, scaler_recompensa, obs: np.ndarray, act: np.ndarray):
-    """VaR/CVaR 5% sobre a distribuição de quantis, em valores reais."""
-    quantis_norm = get_quantiles(algo, obs, act)
-    quantis_reais = scaler_recompensa.inverse_transform(quantis_norm.reshape(-1, 1)).ravel()
-    var_5 = np.quantile(quantis_reais, 0.05)
-    cvar_5 = quantis_reais[quantis_reais <= var_5].mean()
-    return var_5, cvar_5
-
-def predict_sl_profit(input_data: CampaignInput, **overrides) -> float:
-    """Lucro previsto pelo regressor SL, usando o mesmo encoder do treino (sl_ohe_encoder)."""
-    enc = models_state["sl_ohe"]
-    df = pd.DataFrame([{**input_data.model_dump(), **overrides}])
-    X_sl = enc.transform(df[list(enc.feature_names_in_)])
-    return models_state["sl_profit"].predict(X_sl)[0]
-
-# --- 7. Endpoints de Inferência ---
-
-@app.post("/recommend_price", response_model=PredictionResponse)
-async def recommend_price(input_data: CampaignInput):
-    start_time = time.time()
-    try:
-        state_vector = preprocess_input(input_data, feature_type="venda_unica")
-        
-        # RL Prediction
-        action_norm = models_state["cql_venda_unica"].predict(state_vector)[0]
-        preco_rl = models_state["scaler_acao"].inverse_transform(action_norm.reshape(1, -1))[0][0]
-
-        # KBS: limita à faixa do Tier; o risco é avaliado no preço efetivamente recomendado
-        preco_real, kbs_applied = apply_kbs(preco_rl, input_data.Tier)
-        action_kbs = models_state["scaler_acao"].transform([[preco_real]]).astype(np.float32)[0]
-        
-        # Risco (quantis do crítico QR)
-        var_5, cvar_5 = compute_risk(
-            models_state["cql_venda_unica"], models_state["scaler_recompensa"], state_vector, action_kbs
-        )
-
-        # SL Prediction
-        lucro_sl = predict_sl_profit(input_data)
-
-        return PredictionResponse(
-            modelo="RL (Venda Única) Dinâmico",
-            preco_recomendado=float(preco_real),
-            preco_rl_bruto=float(preco_rl),
-            kbs_applied=kbs_applied,
-            lucro_estimado_sl=float(lucro_sl),
-            var_5_percent=float(var_5),
-            cvar_5_percent=float(cvar_5),
-            latencia_ms=(time.time() - start_time) * 1000
-        )
-    except Exception as e:
-        print(f"Erro: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/recommend_subscription_price", response_model=PredictionResponse)
-async def recommend_subscription_price(input_data: CampaignInput):
-    start_time = time.time()
-    try:
-        state_vector = preprocess_input(input_data, feature_type="assinatura")
-        
-        action_norm = models_state["cql_assinatura"].predict(state_vector)[0]
-        preco_rl = models_state["scaler_assinatura_acao"].inverse_transform(action_norm.reshape(1, -1))[0][0]
-
-        # KBS: limita à faixa do Tier; o risco é avaliado no preço efetivamente recomendado
-        preco_real, kbs_applied = apply_kbs(preco_rl, input_data.Tier)
-        action_kbs = models_state["scaler_assinatura_acao"].transform([[preco_real]]).astype(np.float32)[0]
-        
-        var_5, cvar_5 = compute_risk(
-            models_state["cql_assinatura"], models_state["scaler_assinatura_recompensa"], state_vector, action_kbs
-        )
-        
-        lucro_sl = predict_sl_profit(input_data, Modelo_Cobranca="Assinatura")
-
-        return PredictionResponse(
-            modelo="RL (Assinatura) LTV",
-            preco_recomendado=float(preco_real),
-            preco_rl_bruto=float(preco_rl),
-            kbs_applied=kbs_applied,
-            lucro_estimado_sl=float(lucro_sl),
-            var_5_percent=float(var_5),
-            cvar_5_percent=float(cvar_5),
-            latencia_ms=(time.time() - start_time) * 1000
-        )
-    except Exception as e:
-        print(f"Erro: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
 def read_root():
-    return {"status": "LOCAC API Online", "models_loaded": "cql_venda_unica" in models_state}
+    return {
+        "status": "LOCAC API Online",
+        "metodos": {c: sorted(m) for c, m in models_state.get("metodos", {}).items()},
+        "retreino_em_andamento": retreino_em_andamento.is_set(),
+    }

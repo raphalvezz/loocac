@@ -13,17 +13,21 @@ export interface CampaignSimulation {
   countries: Location[];
   states: Location[];
   cities: Location[];
-  recommendations: PricingRecommendation[];
+  recommendations: Recomendacao[];
 }
 
-export interface PricingRecommendation {
-  type: 'subscription' | 'fixed';
-  amount: number;
-  rawAmount: number;       // preço do RL antes da regra de faixa (KBS)
-  kbsApplied: boolean;
-  estimatedProfit: number; // lucro previsto pelo SL
-  roi: number;             // lucro / orçamento, em %
-  var5: number;
-  cvar5: number;
-  locations: string[];
+export type MetodoPreco = 'rl' | 'sl' | 'bandido' | 'bc';
+
+// Resposta de POST /recomendar e de cada item de POST /comparar (main.py)
+export interface Recomendacao {
+  metodo: MetodoPreco;
+  cobranca: 'venda_unica' | 'assinatura';
+  preco_recomendado: number;
+  preco_bruto: number;                    // saída do método antes da regra de faixa (KBS)
+  kbs_applied: boolean;
+  lucro_previsto_metodo: number | null;   // modelo de lucro do próprio método (BC não tem)
+  lucro_estimado_sl: number | null;       // avaliação comum: SL no preço final
+  var_5_percent: number | null;           // avaliação comum: quantis do crítico do RL
+  cvar_5_percent: number | null;
+  latencia_ms: number;
 }
