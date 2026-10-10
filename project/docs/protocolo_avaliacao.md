@@ -195,6 +195,26 @@ o lucro verdadeiro do simulador.
   que não existe em produção; o efeito intertemporal (κ, λ) é uma hipótese do
   ambiente, não um dado.
 
+### Resultado da robustez à demanda linear (2026-10-10, 3 sementes)
+
+% do ótimo no total (Low / High entre parênteses):
+
+| política | venda única | assinatura |
+|---|---|---|
+| sl | 80,6 (62,4 / 98,9) | 97,1 |
+| bandido | 82,6 (66,1 / 99,1) | 99,2 |
+| bc | 87,2 (76,0 / 98,3) | 99,3 |
+| cql | 89,0 (79,5 / 98,6) | 99,4 |
+| oraculo_obs | 91,6 (83,2 / 100) | 100 |
+
+- A ordem cql > bc > bandido > sl na venda única se repete; a vantagem do CQL está
+  toda no Low Ticket (`cql − bandido` = +13,4 p.p.; no High Ticket −0,6, inconclusivo).
+- Critérios no total: C1, C2 e C3 passam nos dois modelos.
+- Por tier falham por pouco: C2 no High Ticket da venda única (limite inferior
+  −1,3 p.p.), C3 no High Ticket da venda única (inconclusivo, +0,4) e no Low Ticket
+  da assinatura (−0,09 p.p.). Na assinatura tudo fica entre 97% e 99,4%: o problema
+  continua fácil para qualquer método razoável.
+
 ## 10. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),
