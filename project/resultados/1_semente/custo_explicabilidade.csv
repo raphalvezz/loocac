@@ -1,0 +1,19 @@
+modelo,politica,tempo_treino_s,latencia_ms,gpu,explicabilidade
+venda_unica,aleatorio,8.435600011580391e-05,0.007029805551105205,não,trivial: sorteio uniforme na faixa (a política que coletou os dados)
+venda_unica,meio_faixa,2.112000402121339e-06,0.0037368749998576175,não,total: regra fixa (ponto médio da faixa)
+venda_unica,maximo_faixa,2.193000000261236e-06,0.0037924236140598725,não,total: regra fixa (teto da faixa)
+venda_unica,sl,0.3235718209998595,0.5609501874977872,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+venda_unica,bandido,0.6111290339995321,0.7366062291680464,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+venda_unica,bc,24.83706445400003,0.04910960416913844,opcional (acelera o treino),baixa: rede neural que reproduz os preços do histórico
+venda_unica,cql,2420.3488315660006,0.038838805557538256,opcional (acelera o treino),baixa: rede neural; expõe só a ação e os quantis de lucro do crítico
+venda_unica,oraculo_obs,3.339999238960445e-06,0.21493808333161724,não,referência (usa o simulador)
+venda_unica,oraculo,1.2370001059025526e-06,0.10372651388479426,não,referência (usa o simulador e o cenário verdadeiro)
+assinatura,aleatorio,0.00012310400052228943,0.005339402769600888,não,trivial: sorteio uniforme na faixa (a política que coletou os dados)
+assinatura,meio_faixa,6.579994078492746e-07,0.0031501527802093835,não,total: regra fixa (ponto médio da faixa)
+assinatura,maximo_faixa,1.1579995771171525e-06,0.003552159720735896,não,total: regra fixa (teto da faixa)
+assinatura,sl,0.27001023199954943,0.4715528958361877,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+assinatura,bandido,0.5557809660003841,0.5780402638796053,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+assinatura,bc,22.246798947999196,0.04878475694012094,opcional (acelera o treino),baixa: rede neural que reproduz os preços do histórico
+assinatura,cql,2465.7010019259997,0.041052805550457885,opcional (acelera o treino),baixa: rede neural; expõe só a ação e os quantis de lucro do crítico
+assinatura,oraculo_obs,1.6899994079722092e-06,0.21154212499317915,não,referência (usa o simulador)
+assinatura,oraculo,1.1129995982628316e-06,0.1198689027811876,não,referência (usa o simulador e o cenário verdadeiro)

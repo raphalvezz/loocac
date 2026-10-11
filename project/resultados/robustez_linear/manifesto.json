@@ -1,0 +1,10 @@
+{
+  "forma_demanda": "linear",
+  "simulador_versao": "1.0",
+  "sementes": [
+    42,
+    43,
+    44
+  ],
+  "passos_cql": 20000
+}

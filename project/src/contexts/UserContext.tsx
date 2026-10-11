@@ -56,7 +56,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   }, []);
 
   // Mock login function
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, _password: string) => {  // login simulado: a senha não é verificada
     setLoading(true);
     try {
       // In a real app, this would be an API call to your Django backend

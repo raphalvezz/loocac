@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
-import { User, MapPin, Briefcase, Calendar, Link as LinkIcon, Users, Edit, Share2 } from 'lucide-react';
+import { User, MapPin, Briefcase, Calendar, Link as LinkIcon, Edit, Share2 } from 'lucide-react';
 import PostCard from '../components/posts/PostCard';
 import { Post } from '../types/post';
 

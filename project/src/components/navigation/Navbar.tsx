@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useUser } from '../../contexts/UserContext';
 import { 
   Search, Bell, MessageSquare, User, Menu, X, 
-  Sun, Moon, ChevronDown, LogOut 
+  Sun, Moon
 } from 'lucide-react';
 
 const Navbar: React.FC = () => {
