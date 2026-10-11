@@ -299,6 +299,15 @@ Comparações pareadas (p.p., IC 95%):
 
 - O bandido é o mais frágil: perde 12–14 p.p. quando o público muda e cai abaixo da
   regra fixa `meio_faixa`. O CQL e o BC quase não perdem.
+- **Sensibilidade (posterior, 3 sementes, `resultados/bandido_robusto/`):** um
+  LightGBM regularizado (`num_leaves` 15, `min_child_samples` 200, L2 = 10) reduz a
+  queda do bandido para 5,9 p.p. (venda; IC 5,5 a 6,3) e 6,3 p.p. (assinatura; 1,3 a
+  11,3) **sem custo** dentro da distribuição (82,5% e 99,0%, contra 82,6% e 99,0%).
+  Uma regularização forte (`num_leaves` 7, `min_child_samples` 500, L2 = 50) elimina
+  a queda (−1,6 e −1,5 p.p.), mas custa 4 p.p. dentro da distribuição (78,3% e
+  95,2%). O CQL perde 2,2 e 0,0 p.p. com 84,9% e 98,9% dentro da distribuição: a
+  robustez dele não depende de ajuste. A fragilidade é, portanto, em boa parte da
+  configuração do LightGBM, não do bandido como método.
 - Hipótese (não testada): o CQL e o BC ficam presos à faixa de preço observada nos
   dados (o termo conservador e a imitação puxam para a coleta), enquanto o bandido
   extrapola a curva de lucro aprendida com a região como variável, e a região do
@@ -310,13 +319,21 @@ Comparações pareadas (p.p., IC 95%):
 latência por recomendação (ms, CPU, média sobre os 144 estados), necessidade de
 GPU e grau de explicabilidade.
 
-## 11. Decisões em aberto antes da primeira rodada com CQL
+## 11. Decisões que estavam em aberto antes da primeira rodada com CQL
 
-1. **Observabilidade na venda única.** O estado não distingue os cenários 3/4 e
+1. ~~**Observabilidade na venda única.**~~ **Decidido em 2026-10-12: manter o
+   simulador v1.0 e declarar como limitação** (`docs/limitacoes.md`). Incluir um
+   preço de referência no estado mudaria o simulador, a API e a tela depois de
+   todas as rodadas; o teto observável (`oraculo_obs`) já é reportado junto.
+   Texto original: O estado não distingue os cenários 3/4 e
    5/6, então o teto (`oraculo_obs`) no Low Ticket é ~78% do ótimo. Opções: incluir
    um preço de referência do produto no estado (muda a API e a tela) ou manter e
    discutir como limitação.
-2. **Pouca folga quando o cenário é identificável.** Com a calibração atual,
+2. ~~**Pouca folga quando o cenário é identificável.**~~ **Decidido em 2026-10-12:
+   manter o simulador v1.0 e declarar como limitação.** Ampliar a variação de
+   contexto agora invalidaria as rodadas finais; a pouca folga é reportada e é um
+   dos motivos de o problema estático não separar bem os métodos (seção 6).
+   Texto original: Com a calibração atual,
    `meio_faixa` já obtém ~96% (venda única, High) e ~97,5% (assinatura) do ótimo.
    A variação de contexto (multiplicadores 0,81–1,16) desloca pouco o preço ótimo,
    então a diferença máxima entre qualquer política aprendida e a regra fixa é de
@@ -341,6 +358,9 @@ GPU e grau de explicabilidade.
 | 2026-10-08 | `sl_dataset_combined.csv` passa a incluir as colunas de memória | O SL de LTV (assinatura) usa o mesmo estado do CQL. Os dados gerados não mudam. |
 | 2026-10-09 | CQL e BC passam a usar a ação na faixa observável do estado (`escala_acao='estado'`); `politicas.CQL`/`treinar_cql.py` viram a versão canônica | Decidido **depois** das ablações (seção 9): com a ação na faixa do Tier, o crítico extrapola fora da faixa de dados do estado e o ator fica entre duas modas (Low Ticket ~50% do ótimo); com a faixa do estado, ~85% (venda única) e ~98% (assinatura) em treino curto. É a mesma faixa em que `sl` e `bandido` já buscavam o preço, então a comparação fica mais justa. As ablações publicadas usam a versão anterior (`tier`) na base. |
 | 2026-10-10 | FQE aprende a recompensa relativa à média da chave de estado (lucro / média − 1), não o lucro padronizado globalmente | Decidido **depois** da primeira rodada do FQE: com a padronização global a ordem entre estados saía certa (correlação ~1), mas o % do ótimo errava em centenas de p.p. nos estados de lucro pequeno. Com a escala por estado: CQL venda única 85,0% (simulador) contra 85,1% (FQE); BC erra +5,9 p.p.; assinatura ±1,2 p.p. |
+| 2026-10-12 | Seção 11, itens 1 e 2 (preço de referência no estado; folga do simulador): manter o simulador v1.0 e declarar como limitação | Mudar o estado ou a calibração depois das rodadas finais invalidaria a comparação; os dois pontos entram em `docs/limitacoes.md`. |
+| 2026-10-12 | Análise de sensibilidade **posterior** do bandido regularizado no deslocamento de público (`avaliar_bandido_robusto.py`) | Feita depois de ver a queda de 12–14 p.p. É exploratória: o bandido da comparação principal continua o registrado (`bandido.BandidoLGBM`). |
+| 2026-10-12 | Tela mostra "indisponível" (não "—" nem número) quando a API devolve `null` em lucro do método ou VaR/CVaR | O risco vem do crítico do RL para todos os métodos; sem o RL carregado, não há valor a mostrar. Conferido no navegador (`docs/figuras/tela_sem_rl.png`). |
 | 2026-10-08 | `oraculo_obs` passa a maximizar o % do ótimo, não o lucro médio em US$ | Erro de definição: maximizando US$, o cenário de lucro maior dominava e uma política observável (ε-greedy) passou do "teto". Na venda única o teto sobe de 83,6% para 88,9% (Low: 67% → 78%). |
 
 ## Como reproduzir

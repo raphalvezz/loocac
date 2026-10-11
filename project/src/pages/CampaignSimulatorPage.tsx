@@ -28,6 +28,8 @@ const mensagemDeErro = (erro: unknown) => {
   return 'Erro ao simular a campanha. Verifique o backend.';
 };
 
+const INDISPONIVEL = 'indisponível';
+
 const CampaignSimulatorPage = () => {
   // 1. Configuração de Mercado (Gêmeo Digital)
   const [marketConfig, setMarketConfig] = useState({
@@ -101,8 +103,12 @@ const CampaignSimulatorPage = () => {
     refetch();
   };
 
-  const formatCurrency = (amount: number | null) =>
-    amount === null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  const formatCurrency = (amount: number | null | undefined) =>
+    amount == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  // Campo sem valor vem como null da API (método sem modelo de lucro, crítico do RL não
+  // carregado): mostra "indisponível", nunca um número.
+  const ouIndisponivel = (amount: number | null | undefined) =>
+    amount == null ? INDISPONIVEL : formatCurrency(amount);
 
   // Na comparação, destaca o maior lucro pela avaliação comum (SL), não pelo modelo de cada
   // método; empates (o SL é por árvores, preços próximos podem cair na mesma folha) destacam todos
@@ -204,7 +210,7 @@ const CampaignSimulatorPage = () => {
                 {recomendacoes.length > 1 ? 'Comparação de métodos' : 'AI Recommendation'}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                Todos os preços passam pela mesma regra de faixa (KBS). Lucro (SL), ROI e risco são calculados pelo mesmo avaliador para todos os métodos.
+                Todos os preços passam pela mesma regra de faixa (KBS). Lucro (SL), ROI e risco são calculados pelo mesmo avaliador para todos os métodos: o risco (VaR/CVaR) vem dos quantis do crítico do RL no preço de cada método e fica indisponível se o RL não estiver carregado. O BC não tem modelo de lucro próprio.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {recomendacoes.map((rec) => (
@@ -221,15 +227,15 @@ const CampaignSimulatorPage = () => {
                       </div>
                       <ul className="space-y-1.5 text-sm">
                         {[
-                          ['Lucro (método)', formatCurrency(rec.lucro_previsto_metodo)],
-                          ['Lucro (SL)', formatCurrency(rec.lucro_estimado_sl)],
-                          ['ROI (SL)', rec.lucro_estimado_sl === null ? '—' : `${((rec.lucro_estimado_sl / formData.budget) * 100).toFixed(1)}%`],
-                          ['VaR 5%', formatCurrency(rec.var_5_percent)],
-                          ['CVaR 5%', formatCurrency(rec.cvar_5_percent)],
+                          ['Lucro (método)', ouIndisponivel(rec.lucro_previsto_metodo)],
+                          ['Lucro (SL)', ouIndisponivel(rec.lucro_estimado_sl)],
+                          ['ROI (SL)', rec.lucro_estimado_sl == null ? INDISPONIVEL : `${((rec.lucro_estimado_sl / formData.budget) * 100).toFixed(1)}%`],
+                          ['VaR 5% (RL)', ouIndisponivel(rec.var_5_percent)],
+                          ['CVaR 5% (RL)', ouIndisponivel(rec.cvar_5_percent)],
                         ].map(([rotulo, valor]) => (
                           <li key={rotulo} className="flex justify-between gap-3">
                             <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">{rotulo}</span>
-                            <span className="font-medium text-gray-900 dark:text-white whitespace-nowrap tabular-nums">{valor}</span>
+                            <span className={`font-medium whitespace-nowrap tabular-nums ${valor === INDISPONIVEL ? 'text-gray-400 dark:text-gray-500 italic' : 'text-gray-900 dark:text-white'}`}>{valor}</span>
                           </li>
                         ))}
                       </ul>

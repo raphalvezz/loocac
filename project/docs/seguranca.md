@@ -21,6 +21,14 @@ cd project && uvicorn main:app --port 8000
 npm run dev
 ```
 
+## Decisão sobre a chave no navegador (2026-10-12)
+
+A chave em `VITE_LOCAC_API_KEY` vai no JavaScript entregue ao navegador e pode ser
+lida por qualquer pessoa com acesso à tela (DevTools, aba Rede ou o próprio
+bundle). Fica assim no protótipo e entra em Limitações. A correção para um uso
+real é tirar a chave do front: um backend da própria aplicação (BFF) autentica o
+usuário e chama a API do LOCAC com a chave guardada no servidor.
+
 ## Texto para a seção de Limitações
 
 > O protótipo adota apenas medidas mínimas de segurança: uma chave de API
