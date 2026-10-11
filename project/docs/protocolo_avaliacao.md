@@ -95,6 +95,29 @@ Avaliados no total (Todos) e por tier, separadamente para venda única e assinat
 Se C2 falhar, o resultado da monografia é que um bandido contextual simples é
 suficiente neste problema. É um resultado válido e deve ser reportado como tal.
 
+### Resultado final (2026-10-11, 5 sementes, CQL com 50.000 passos)
+
+Referência para o capítulo 5: `resultados/final_5_sementes/`. % do ótimo:
+
+| política | venda Low | venda High | venda Todos | assin. Low | assin. High | assin. Todos |
+|---|---|---|---|---|---|---|
+| aleatorio | 61,5 | 83,1 | 72,3 | 88,8 | 88,5 | 88,6 |
+| meio_faixa | 64,8 | 96,3 | 80,6 | 97,5 | 97,5 | 97,5 |
+| sl | 58,6 | 99,0 | 78,8 | 88,7 | 98,9 | 93,8 |
+| bandido | 66,4 | 98,9 | 82,6 | 99,0 | 99,1 | 99,0 |
+| bc | 69,0 | 96,6 | 82,8 | 97,7 | 97,8 | 97,7 |
+| **cql** | **70,6** | **99,2** | **84,9** | 98,2 | **99,7** | 98,9 |
+| oraculo_obs | 77,7 | 100 | 88,9 | 100 | 100 | 100 |
+
+- **C1** passa em todos os recortes (`cql − aleatorio` de +9 a +16 p.p.).
+- **C2** passa no total dos dois modelos (venda única +2,3 p.p., IC 2,1 a 2,5;
+  assinatura −0,1, IC −0,21 a 0,02) e em todos os tiers, exceto o Low Ticket da
+  assinatura: −0,84 p.p., IC −1,06 a −0,62, limite inferior 0,06 p.p. abaixo da margem.
+- **C3** passa em todos os recortes (`cql − meio_faixa` de +0,7 a +5,9 p.p.).
+- Leitura: no problema estático o CQL empata com o bandido (assinatura) ou o supera
+  por pouco (venda única, +2,3 p.p., todo no Low Ticket). A vantagem clara do RL
+  aparece no ambiente sequencial (seção 9b).
+
 ## 7. Generalização (fora da distribuição de treino)
 
 `avaliar_generalizacao.py` treina `sl` e `bandido` **sem** um grupo inteiro e avalia
