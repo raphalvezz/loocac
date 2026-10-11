@@ -3,7 +3,11 @@ venv/
 .env
 __pycache__/
 *.pyc
-.DS_Store.pytest_cache/
+.DS_Store
+.pytest_cache/
+
+# Build do front (npm run build)
+project/dist/
 
 # Modelos treinados ficam fora do repositório (project/docs/artefatos.md)
 *.d3

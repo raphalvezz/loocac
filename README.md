@@ -79,10 +79,23 @@ python avaliar_politicas.py         # 5 sementes, todas as abordagens
 python avaliar_generalizacao.py
 python simular_bandido_online.py --n-inicial 10 && python figura_bandido_online.py
 python ablacoes_cql.py && python diagnostico_cql.py
+python avaliar_sequencial.py && python figura_sequencial.py   # ambiente sequencial
+python avaliar_robustez.py && python avaliar_deslocamento.py && python avaliar_fqe.py
 ```
 
 Métrica, comparações, critérios de sucesso e desvios registrados:
 [`project/docs/protocolo_avaliacao.md`](project/docs/protocolo_avaliacao.md).
+
+## Escopo
+
+A API e a tela servem a decisão de preço de **passo único**. O ambiente sequencial
+(`project/sequencial.py`, o preço de hoje muda a demanda de amanhã) é um
+experimento: mostra quando o RL que planeja passa a valer a pena, mas não está
+integrado ao produto. Motivos e texto para a monografia em
+[`project/docs/escopo_produto.md`](project/docs/escopo_produto.md).
+
+Verificar a API em execução com os modelos treinados (uma chamada por método e
+cobrança): `LOCAC_API_KEY=... python verificar_api.py` (na pasta `project/`).
 
 ## Segurança
 
