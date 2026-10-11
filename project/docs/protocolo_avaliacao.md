@@ -180,6 +180,14 @@ meio da faixa, SL, bandido, BC, CQL γ = 0 e CQL γ = 0,95 (recompensa por conte
 Se S1 falhar, a conclusão do TCC é que, mesmo com efeito intertemporal, o RL
 offline não superou o bandido nestes dados.
 
+**Extensão do sequencial (registrada em 2026-10-11, antes de rodar):** a rodada
+final usa 5 sementes (42–46), CQL com 50.000 passos (o mesmo da comparação
+principal) e as duas cobranças. Na assinatura o lucro do período é o LTV da
+coorte e a calibração (κ, λ) é a mesma, sem ajuste: o oráculo míope fica em 82,7%
+(planejar vale ~17 p.p.). S1 e S2 são avaliados separadamente em cada cobrança,
+no total e por tier. A rodada de 3 sementes e 20.000 passos (venda única) fica
+como resultado preliminar.
+
 **Robustez à forma da demanda** (`avaliar_robustez.py`): a mesma comparação da
 seção 5 com demanda linear (simulador `usar_forma('linear')`), 3 sementes, CQL com
 20.000 passos. A conclusão é robusta se a ordem bandido/BC/CQL e os critérios C1–C3
@@ -193,7 +201,7 @@ origem; checkpoint do CQL escolhido só na origem. Mede a queda origem − desti
 lucro do CQL e do BC usando só os 20% de dados não usados no treino, comparada com
 o lucro verdadeiro do simulador.
 
-### Resultado do ambiente sequencial (2026-10-10, 3 sementes)
+### Resultado preliminar do ambiente sequencial (2026-10-10, venda única, 3 sementes, 20.000 passos)
 
 | política | Low Ticket | High Ticket | Todos |
 |---|---|---|---|

@@ -4,7 +4,7 @@ Ambiente sequencial: o preço de hoje afeta o cliente de amanhã (reputação).
 Cada campanha dura T períodos. Além do contexto (cenário, região, plataforma),
 o estado tem a reputação ρ_t da marca naquele público:
 
-    lucro_t   = ρ_t · lucro_estático(p_t)          (simulador.lucro_esperado, venda única)
+    lucro_t   = ρ_t · lucro_estático(p_t)          (simulador.lucro_esperado; lucro ou LTV)
     ρ_{t+1}   = clip(ρ_t + κ · (p_ref − p_t) / p_ref, ρ_min, ρ_max)
     p_ref     = λ · p*_estático(contexto)          (o "preço justo" percebido pelo público)
 
@@ -16,6 +16,9 @@ entre o lucro de hoje e o de amanhã — o único cenário em que planejar (RL c
 O ótimo exato vem de programação dinâmica (reputação discretizada); a métrica é o
 lucro total esperado da campanha como % desse ótimo, a partir de ρ_0 = 1, nos
 144 contextos de simulador.contextos.
+
+Vale para as duas cobranças (`modelo` = 'venda_unica' ou 'assinatura'); na
+assinatura o "lucro" do período é o LTV da coorte adquirida naquele período.
 
 O módulo NÃO altera o simulador v1.0: reaproveita a economia estática dele.
 """
@@ -32,35 +35,36 @@ T = 12                    # períodos por campanha
 KAPPA = 0.15              # velocidade de ajuste da reputação
 LAMBDA = 0.85             # preço justo = 85% do preço míope ótimo
 RHO_MIN, RHO_MAX, RHO_0 = 0.5, 1.5, 1.0
-MODELO = 'venda_unica'
+MODELO = 'venda_unica'    # padrão das funções abaixo
+MODELOS = ('venda_unica', 'assinatura')
 EXTRAS = ('reputacao', 'periodo')   # colunas extras do estado para as políticas
 N_RHO, N_PRECO = 201, 200          # grades da programação dinâmica
 
 
-def preco_referencia(cenario, regiao, plataforma):
-    return LAMBDA * sim.preco_otimo(cenario, regiao, plataforma, MODELO)[0]
+def preco_referencia(cenario, regiao, plataforma, modelo=MODELO):
+    return LAMBDA * sim.preco_otimo(cenario, regiao, plataforma, modelo)[0]
 
 
 def proxima_reputacao(rho, preco, p_ref):
     return np.clip(rho + KAPPA * (p_ref - preco) / p_ref, RHO_MIN, RHO_MAX)
 
 
-def lucro(rho, preco, cenario, regiao, plataforma):
-    return rho * sim.lucro_esperado(preco, cenario, regiao, plataforma, MODELO)
+def lucro(rho, preco, cenario, regiao, plataforma, modelo=MODELO):
+    return rho * sim.lucro_esperado(preco, cenario, regiao, plataforma, modelo)
 
 
 # ---------------------------------------------------------------------------
 # Ótimo por programação dinâmica
 # ---------------------------------------------------------------------------
-def programacao_dinamica(cenario, regiao, plataforma, faixa=None):
+def programacao_dinamica(cenario, regiao, plataforma, faixa=None, modelo=MODELO):
     """Valor ótimo V_0(ρ_0) e a política (preço por período e reputação).
 
     `faixa` limita os preços (padrão: faixa do cenário)."""
     lo, hi = faixa if faixa is not None else (cenario['Price_Min'], cenario['Price_Max'])
     rhos = np.linspace(RHO_MIN, RHO_MAX, N_RHO)
     precos = np.geomspace(lo, hi, N_PRECO)
-    p_ref = preco_referencia(cenario, regiao, plataforma)
-    estatico = sim.lucro_esperado(precos, cenario, regiao, plataforma, MODELO)      # (P,)
+    p_ref = preco_referencia(cenario, regiao, plataforma, modelo)
+    estatico = sim.lucro_esperado(precos, cenario, regiao, plataforma, modelo)      # (P,)
     prox = proxima_reputacao(rhos[:, None], precos[None, :], p_ref)                 # (R, P)
     V = np.zeros(N_RHO)
     politica = np.zeros((T, N_RHO))
@@ -74,7 +78,7 @@ def programacao_dinamica(cenario, regiao, plataforma, faixa=None):
 # ---------------------------------------------------------------------------
 # Dados logados (política de coleta aleatória) e estados
 # ---------------------------------------------------------------------------
-def gerar_dados(cenarios, episodios_por_cenario=200, semente=sim.SEED):
+def gerar_dados(cenarios, episodios_por_cenario=200, semente=sim.SEED, modelo=MODELO):
     """Campanhas de T períodos com preço uniforme na faixa do cenário.
 
     Os episódios saem embaralhados e com tamanho fixo, então o corte 80/20 das
@@ -85,17 +89,18 @@ def gerar_dados(cenarios, episodios_por_cenario=200, semente=sim.SEED):
     for idx, c in enumerate(cenarios):
         for _ in range(episodios_por_cenario):
             regiao, plataforma = rng.choice(sim.REGIOES), rng.choice(sim.PLATAFORMAS)
-            p_ref = preco_referencia(c, regiao, plataforma)
+            p_ref = preco_referencia(c, regiao, plataforma, modelo)
             rho = RHO_0
             for t in range(T):
                 preco = rng.uniform(c['Price_Min'], c['Price_Max'])
+                observado = rho * sim.amostrar_lucro(preco, c, regiao, plataforma, modelo, rng)
                 linhas.append({
                     'episodio': ep, 'passo': t, 'Cenario': idx, 'Regiao': regiao, 'Plataforma': plataforma,
                     'Tier': c['Tier'], 'Orcamento': c['Budget'], **sim.CATEGORICAS_FIXAS,
                     **sim.memoria_assinatura(c), 'reputacao': rho, 'periodo': t / T,
                     'Preco_Amostra': preco,
-                    'Lucro_Real': rho * sim.amostrar_lucro(preco, c, regiao, plataforma, MODELO, rng),
-                    'LTV_Real': 0.0,
+                    'Lucro_Real': observado if modelo == 'venda_unica' else 0.0,
+                    'LTV_Real': observado if modelo == 'assinatura' else 0.0,
                 })
                 rho = float(proxima_reputacao(rho, preco, p_ref))
             ep += 1
@@ -111,12 +116,12 @@ def gerar_dados(cenarios, episodios_por_cenario=200, semente=sim.SEED):
 class Avaliador:
     """Lucro total esperado de uma política nos 144 contextos, como % do ótimo (PD)."""
 
-    def __init__(self, cenarios):
-        self.cenarios = cenarios
+    def __init__(self, cenarios, modelo=MODELO):
+        self.cenarios, self.modelo = cenarios, modelo
         self.contextos = sim.contextos(cenarios)
-        self.p_ref = np.array([preco_referencia(cenarios[r.Cenario], r.Regiao, r.Plataforma)
+        self.p_ref = np.array([preco_referencia(cenarios[r.Cenario], r.Regiao, r.Plataforma, modelo)
                                for r in self.contextos.itertuples()])
-        self.otimo = np.array([programacao_dinamica(cenarios[r.Cenario], r.Regiao, r.Plataforma)[0]
+        self.otimo = np.array([programacao_dinamica(cenarios[r.Cenario], r.Regiao, r.Plataforma, modelo=modelo)[0]
                                for r in self.contextos.itertuples()])
 
     def simular(self, escolher):
@@ -127,7 +132,7 @@ class Avaliador:
         for t in range(T):
             estados = self.contextos.assign(reputacao=rho, periodo=t / T)
             precos = np.asarray(escolher(estados), dtype=float)
-            total += np.array([lucro(r_, p, self.cenarios[c.Cenario], c.Regiao, c.Plataforma)
+            total += np.array([lucro(r_, p, self.cenarios[c.Cenario], c.Regiao, c.Plataforma, self.modelo)
                                for r_, p, c in zip(rho, precos, self.contextos.itertuples())])
             rho = proxima_reputacao(rho, precos, self.p_ref)
             precos_t.append(precos)
@@ -150,11 +155,11 @@ class OraculoMiope:
     """Conhece o cenário e cobra, a cada período, o preço míope ótimo (p*)."""
     nome, privilegiada = 'oraculo_miope', True
 
-    def __init__(self, cenarios):
-        self.cenarios = cenarios
+    def __init__(self, cenarios, modelo=MODELO):
+        self.cenarios, self.modelo = cenarios, modelo
 
     def precos(self, estados):
-        return np.array([sim.preco_otimo(self.cenarios[r.Cenario], r.Regiao, r.Plataforma, MODELO)[0]
+        return np.array([sim.preco_otimo(self.cenarios[r.Cenario], r.Regiao, r.Plataforma, self.modelo)[0]
                          for r in estados.itertuples()])
 
 
@@ -162,8 +167,8 @@ class OraculoPD:
     """Política ótima da programação dinâmica (conhece o cenário e a dinâmica)."""
     nome, privilegiada = 'oraculo_pd', True
 
-    def __init__(self, cenarios):
-        self.cenarios = cenarios
+    def __init__(self, cenarios, modelo=MODELO):
+        self.cenarios, self.modelo = cenarios, modelo
         self._cache = {}
 
     def precos(self, estados):
@@ -171,7 +176,8 @@ class OraculoPD:
         for r in estados.itertuples():
             chave = (r.Cenario, r.Regiao, r.Plataforma)
             if chave not in self._cache:
-                self._cache[chave] = programacao_dinamica(self.cenarios[r.Cenario], r.Regiao, r.Plataforma)[1]
+                self._cache[chave] = programacao_dinamica(self.cenarios[r.Cenario], r.Regiao, r.Plataforma,
+                                                          modelo=self.modelo)[1]
             rhos, politica = self._cache[chave]
             t = min(int(round(r.periodo * T)), T - 1)
             out.append(float(np.interp(r.reputacao, rhos, politica[t])))
