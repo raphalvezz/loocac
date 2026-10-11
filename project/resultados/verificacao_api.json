@@ -1,0 +1,967 @@
+{
+  "gerado_em": "2026-10-11T15:36:55+00:00",
+  "python": "3.13.16",
+  "api": {
+    "status": "LOCAC API Online",
+    "metodos": {
+      "venda_unica": [
+        "bandido",
+        "bc",
+        "rl",
+        "sl"
+      ],
+      "assinatura": [
+        "bandido",
+        "bc",
+        "rl",
+        "sl"
+      ]
+    },
+    "retreino_em_andamento": false
+  },
+  "falhas": [],
+  "chamadas": [
+    {
+      "rota": "/recomendar",
+      "metodo": "rl",
+      "cobranca": "venda_unica",
+      "entrada": {
+        "Regiao": "Europe",
+        "Plataforma": "Instagram",
+        "Tier": "Low Ticket",
+        "Orcamento": 1000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "rl",
+        "cobranca": "venda_unica",
+        "preco_recomendado": 47.24807039012256,
+        "preco_bruto": 47.24807039012256,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 2875.49755859375,
+        "lucro_estimado_sl": 3237.6689395979074,
+        "var_5_percent": -6179.4189453125,
+        "cvar_5_percent": -11864.5390625,
+        "latencia_ms": 39.46158200051286
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "sl",
+      "cobranca": "venda_unica",
+      "entrada": {
+        "Regiao": "Europe",
+        "Plataforma": "Instagram",
+        "Tier": "Low Ticket",
+        "Orcamento": 1000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "sl",
+        "cobranca": "venda_unica",
+        "preco_recomendado": 65.13916087220422,
+        "preco_bruto": 65.13916087220422,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 7859.72795357235,
+        "lucro_estimado_sl": 7859.72795357235,
+        "var_5_percent": 3634.2890625,
+        "cvar_5_percent": 1101.09375,
+        "latencia_ms": 40.140181001333985
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "bandido",
+      "cobranca": "venda_unica",
+      "entrada": {
+        "Regiao": "Europe",
+        "Plataforma": "Instagram",
+        "Tier": "Low Ticket",
+        "Orcamento": 1000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "bandido",
+        "cobranca": "venda_unica",
+        "preco_recomendado": 72.94842653602483,
+        "preco_bruto": 72.94842653602483,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 8012.6587468332455,
+        "lucro_estimado_sl": 7859.72795357235,
+        "var_5_percent": 4370.13427734375,
+        "cvar_5_percent": 3886.40625,
+        "latencia_ms": 44.375393001246266
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "bc",
+      "cobranca": "venda_unica",
+      "entrada": {
+        "Regiao": "Europe",
+        "Plataforma": "Instagram",
+        "Tier": "Low Ticket",
+        "Orcamento": 1000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "bc",
+        "cobranca": "venda_unica",
+        "preco_recomendado": 50.74542736373732,
+        "preco_bruto": 50.74542736373732,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": null,
+        "lucro_estimado_sl": 5686.586565061136,
+        "var_5_percent": -4701.4453125,
+        "cvar_5_percent": -9806.0625,
+        "latencia_ms": 17.126791997725377
+      }
+    },
+    {
+      "rota": "/comparar",
+      "cobranca": "venda_unica",
+      "entrada": {
+        "Regiao": "Europe",
+        "Plataforma": "Instagram",
+        "Tier": "Low Ticket",
+        "Orcamento": 1000
+      },
+      "status": 200,
+      "resposta": [
+        {
+          "metodo": "rl",
+          "cobranca": "venda_unica",
+          "preco_recomendado": 47.24807039012256,
+          "preco_bruto": 47.24807039012256,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 2875.49755859375,
+          "lucro_estimado_sl": 3237.6689395979074,
+          "var_5_percent": -6179.4189453125,
+          "cvar_5_percent": -11864.5390625,
+          "latencia_ms": 20.106875999772456
+        },
+        {
+          "metodo": "sl",
+          "cobranca": "venda_unica",
+          "preco_recomendado": 65.13916087220422,
+          "preco_bruto": 65.13916087220422,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 7859.72795357235,
+          "lucro_estimado_sl": 7859.72795357235,
+          "var_5_percent": 3634.2890625,
+          "cvar_5_percent": 1101.09375,
+          "latencia_ms": 44.27056599888601
+        },
+        {
+          "metodo": "bandido",
+          "cobranca": "venda_unica",
+          "preco_recomendado": 72.94842653602483,
+          "preco_bruto": 72.94842653602483,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 8012.6587468332455,
+          "lucro_estimado_sl": 7859.72795357235,
+          "var_5_percent": 4370.13427734375,
+          "cvar_5_percent": 3886.40625,
+          "latencia_ms": 31.01822900134721
+        },
+        {
+          "metodo": "bc",
+          "cobranca": "venda_unica",
+          "preco_recomendado": 50.74542736373732,
+          "preco_bruto": 50.74542736373732,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": null,
+          "lucro_estimado_sl": 5686.586565061136,
+          "var_5_percent": -4701.4453125,
+          "cvar_5_percent": -9806.0625,
+          "latencia_ms": 12.824487999751
+        }
+      ]
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "rl",
+      "cobranca": "venda_unica",
+      "entrada": {
+        "Regiao": "Asia",
+        "Plataforma": "LinkedIn",
+        "Tier": "High Ticket",
+        "Orcamento": 50000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "rl",
+        "cobranca": "venda_unica",
+        "preco_recomendado": 3505.104071174869,
+        "preco_bruto": 3505.104071174869,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 625265.375,
+        "lucro_estimado_sl": 625642.7256050943,
+        "var_5_percent": 494166.71875,
+        "cvar_5_percent": 455279.25,
+        "latencia_ms": 25.408977002371103
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "sl",
+      "cobranca": "venda_unica",
+      "entrada": {
+        "Regiao": "Asia",
+        "Plataforma": "LinkedIn",
+        "Tier": "High Ticket",
+        "Orcamento": 50000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "sl",
+        "cobranca": "venda_unica",
+        "preco_recomendado": 3706.718448078646,
+        "preco_bruto": 3706.718448078646,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 634672.0298193723,
+        "lucro_estimado_sl": 634672.0298193723,
+        "var_5_percent": 496679.75,
+        "cvar_5_percent": 463118.75,
+        "latencia_ms": 40.60320299686282
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "bandido",
+      "cobranca": "venda_unica",
+      "entrada": {
+        "Regiao": "Asia",
+        "Plataforma": "LinkedIn",
+        "Tier": "High Ticket",
+        "Orcamento": 50000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "bandido",
+        "cobranca": "venda_unica",
+        "preco_recomendado": 3349.625327321839,
+        "preco_bruto": 3349.625327321839,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 619318.8925341027,
+        "lucro_estimado_sl": 630041.0718344423,
+        "var_5_percent": 476992.3125,
+        "cvar_5_percent": 435871.875,
+        "latencia_ms": 42.94446499989135
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "bc",
+      "cobranca": "venda_unica",
+      "entrada": {
+        "Regiao": "Asia",
+        "Plataforma": "LinkedIn",
+        "Tier": "High Ticket",
+        "Orcamento": 50000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "bc",
+        "cobranca": "venda_unica",
+        "preco_recomendado": 3383.2625530625287,
+        "preco_bruto": 3383.2625530625287,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": null,
+        "lucro_estimado_sl": 630041.0718344423,
+        "var_5_percent": 480880.75,
+        "cvar_5_percent": 440049.71875,
+        "latencia_ms": 23.803231000783853
+      }
+    },
+    {
+      "rota": "/comparar",
+      "cobranca": "venda_unica",
+      "entrada": {
+        "Regiao": "Asia",
+        "Plataforma": "LinkedIn",
+        "Tier": "High Ticket",
+        "Orcamento": 50000
+      },
+      "status": 200,
+      "resposta": [
+        {
+          "metodo": "rl",
+          "cobranca": "venda_unica",
+          "preco_recomendado": 3505.104071174869,
+          "preco_bruto": 3505.104071174869,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 625265.375,
+          "lucro_estimado_sl": 625642.7256050943,
+          "var_5_percent": 494166.71875,
+          "cvar_5_percent": 455279.25,
+          "latencia_ms": 24.060262003331445
+        },
+        {
+          "metodo": "sl",
+          "cobranca": "venda_unica",
+          "preco_recomendado": 3706.718448078646,
+          "preco_bruto": 3706.718448078646,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 634672.0298193723,
+          "lucro_estimado_sl": 634672.0298193723,
+          "var_5_percent": 496679.75,
+          "cvar_5_percent": 463118.75,
+          "latencia_ms": 55.952416001673555
+        },
+        {
+          "metodo": "bandido",
+          "cobranca": "venda_unica",
+          "preco_recomendado": 3349.625327321839,
+          "preco_bruto": 3349.625327321839,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 619318.8925341027,
+          "lucro_estimado_sl": 630041.0718344423,
+          "var_5_percent": 476992.3125,
+          "cvar_5_percent": 435871.875,
+          "latencia_ms": 51.94119899897487
+        },
+        {
+          "metodo": "bc",
+          "cobranca": "venda_unica",
+          "preco_recomendado": 3383.2625530625287,
+          "preco_bruto": 3383.2625530625287,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": null,
+          "lucro_estimado_sl": 630041.0718344423,
+          "var_5_percent": 480880.75,
+          "cvar_5_percent": 440049.71875,
+          "latencia_ms": 19.42068399876007
+        }
+      ]
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "rl",
+      "cobranca": "venda_unica",
+      "entrada": {
+        "Regiao": "North America",
+        "Plataforma": "Facebook",
+        "Tier": "High Ticket",
+        "Orcamento": 200000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "rl",
+        "cobranca": "venda_unica",
+        "preco_recomendado": 18436.975094016827,
+        "preco_bruto": 18436.975094016827,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 4181521.0,
+        "lucro_estimado_sl": 4157495.2097437466,
+        "var_5_percent": 3232000.75,
+        "cvar_5_percent": 2956492.0,
+        "latencia_ms": 23.98737299881759
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "sl",
+      "cobranca": "venda_unica",
+      "entrada": {
+        "Regiao": "North America",
+        "Plataforma": "Facebook",
+        "Tier": "High Ticket",
+        "Orcamento": 200000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "sl",
+        "cobranca": "venda_unica",
+        "preco_recomendado": 18705.0554898727,
+        "preco_bruto": 18705.0554898727,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 4164991.2324158447,
+        "lucro_estimado_sl": 4164991.2324158447,
+        "var_5_percent": 3235734.75,
+        "cvar_5_percent": 2959344.5,
+        "latencia_ms": 45.350325999606866
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "bandido",
+      "cobranca": "venda_unica",
+      "entrada": {
+        "Regiao": "North America",
+        "Plataforma": "Facebook",
+        "Tier": "High Ticket",
+        "Orcamento": 200000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "bandido",
+        "cobranca": "venda_unica",
+        "preco_recomendado": 17945.7541620032,
+        "preco_bruto": 17945.7541620032,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 3991892.614958865,
+        "lucro_estimado_sl": 4157495.2097437466,
+        "var_5_percent": 3195500.75,
+        "cvar_5_percent": 2934313.5,
+        "latencia_ms": 48.356145998695865
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "bc",
+      "cobranca": "venda_unica",
+      "entrada": {
+        "Regiao": "North America",
+        "Plataforma": "Facebook",
+        "Tier": "High Ticket",
+        "Orcamento": 200000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "bc",
+        "cobranca": "venda_unica",
+        "preco_recomendado": 16830.39305095668,
+        "preco_bruto": 16830.39305095668,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": null,
+        "lucro_estimado_sl": 3830823.2521276977,
+        "var_5_percent": 3022985.75,
+        "cvar_5_percent": 2830136.25,
+        "latencia_ms": 30.259274997661123
+      }
+    },
+    {
+      "rota": "/comparar",
+      "cobranca": "venda_unica",
+      "entrada": {
+        "Regiao": "North America",
+        "Plataforma": "Facebook",
+        "Tier": "High Ticket",
+        "Orcamento": 200000
+      },
+      "status": 200,
+      "resposta": [
+        {
+          "metodo": "rl",
+          "cobranca": "venda_unica",
+          "preco_recomendado": 18436.975094016827,
+          "preco_bruto": 18436.975094016827,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 4181521.0,
+          "lucro_estimado_sl": 4157495.2097437466,
+          "var_5_percent": 3232000.75,
+          "cvar_5_percent": 2956492.0,
+          "latencia_ms": 23.880723001639126
+        },
+        {
+          "metodo": "sl",
+          "cobranca": "venda_unica",
+          "preco_recomendado": 18705.0554898727,
+          "preco_bruto": 18705.0554898727,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 4164991.2324158447,
+          "lucro_estimado_sl": 4164991.2324158447,
+          "var_5_percent": 3235734.75,
+          "cvar_5_percent": 2959344.5,
+          "latencia_ms": 43.93769600210362
+        },
+        {
+          "metodo": "bandido",
+          "cobranca": "venda_unica",
+          "preco_recomendado": 17945.7541620032,
+          "preco_bruto": 17945.7541620032,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 3991892.614958865,
+          "lucro_estimado_sl": 4157495.2097437466,
+          "var_5_percent": 3195500.75,
+          "cvar_5_percent": 2934313.5,
+          "latencia_ms": 43.97002699988661
+        },
+        {
+          "metodo": "bc",
+          "cobranca": "venda_unica",
+          "preco_recomendado": 16830.39305095668,
+          "preco_bruto": 16830.39305095668,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": null,
+          "lucro_estimado_sl": 3830823.2521276977,
+          "var_5_percent": 3022985.75,
+          "cvar_5_percent": 2830136.25,
+          "latencia_ms": 19.937448003474856
+        }
+      ]
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "rl",
+      "cobranca": "assinatura",
+      "entrada": {
+        "Regiao": "Europe",
+        "Plataforma": "Instagram",
+        "Tier": "Low Ticket",
+        "Orcamento": 1000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "rl",
+        "cobranca": "assinatura",
+        "preco_recomendado": 32.80172361411947,
+        "preco_bruto": 32.80172361411947,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 368330.46875,
+        "lucro_estimado_sl": 114642.78292368134,
+        "var_5_percent": 259959.59375,
+        "cvar_5_percent": 95981.25,
+        "latencia_ms": 26.997466000466375
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "sl",
+      "cobranca": "assinatura",
+      "entrada": {
+        "Regiao": "Europe",
+        "Plataforma": "Instagram",
+        "Tier": "Low Ticket",
+        "Orcamento": 1000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "sl",
+        "cobranca": "assinatura",
+        "preco_recomendado": 22.857106571982342,
+        "preco_bruto": 22.857106571982342,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 114642.78292368134,
+        "lucro_estimado_sl": 114642.78292368134,
+        "var_5_percent": 83632.8515625,
+        "cvar_5_percent": -164925.5,
+        "latencia_ms": 43.65115399923525
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "bandido",
+      "cobranca": "assinatura",
+      "entrada": {
+        "Regiao": "Europe",
+        "Plataforma": "Instagram",
+        "Tier": "Low Ticket",
+        "Orcamento": 1000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "bandido",
+        "cobranca": "assinatura",
+        "preco_recomendado": 36.057150970254376,
+        "preco_bruto": 36.057150970254376,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 124024.84754909125,
+        "lucro_estimado_sl": 114642.78292368134,
+        "var_5_percent": 269799.9375,
+        "cvar_5_percent": 117169.5,
+        "latencia_ms": 54.40308199831634
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "bc",
+      "cobranca": "assinatura",
+      "entrada": {
+        "Regiao": "Europe",
+        "Plataforma": "Instagram",
+        "Tier": "Low Ticket",
+        "Orcamento": 1000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "bc",
+        "cobranca": "assinatura",
+        "preco_recomendado": 34.18538688969432,
+        "preco_bruto": 34.18538688969432,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": null,
+        "lucro_estimado_sl": 114642.78292368134,
+        "var_5_percent": 272017.4375,
+        "cvar_5_percent": 111410.0,
+        "latencia_ms": 31.149806000030367
+      }
+    },
+    {
+      "rota": "/comparar",
+      "cobranca": "assinatura",
+      "entrada": {
+        "Regiao": "Europe",
+        "Plataforma": "Instagram",
+        "Tier": "Low Ticket",
+        "Orcamento": 1000
+      },
+      "status": 200,
+      "resposta": [
+        {
+          "metodo": "rl",
+          "cobranca": "assinatura",
+          "preco_recomendado": 32.80172361411947,
+          "preco_bruto": 32.80172361411947,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 368330.46875,
+          "lucro_estimado_sl": 114642.78292368134,
+          "var_5_percent": 259959.59375,
+          "cvar_5_percent": 95981.25,
+          "latencia_ms": 35.1403599997866
+        },
+        {
+          "metodo": "sl",
+          "cobranca": "assinatura",
+          "preco_recomendado": 22.857106571982342,
+          "preco_bruto": 22.857106571982342,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 114642.78292368134,
+          "lucro_estimado_sl": 114642.78292368134,
+          "var_5_percent": 83632.8515625,
+          "cvar_5_percent": -164925.5,
+          "latencia_ms": 40.30517600040184
+        },
+        {
+          "metodo": "bandido",
+          "cobranca": "assinatura",
+          "preco_recomendado": 36.057150970254376,
+          "preco_bruto": 36.057150970254376,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 124024.84754909125,
+          "lucro_estimado_sl": 114642.78292368134,
+          "var_5_percent": 269799.9375,
+          "cvar_5_percent": 117169.5,
+          "latencia_ms": 35.45942199707497
+        },
+        {
+          "metodo": "bc",
+          "cobranca": "assinatura",
+          "preco_recomendado": 34.18538688969432,
+          "preco_bruto": 34.18538688969432,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": null,
+          "lucro_estimado_sl": 114642.78292368134,
+          "var_5_percent": 272017.4375,
+          "cvar_5_percent": 111410.0,
+          "latencia_ms": 16.386749000957934
+        }
+      ]
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "rl",
+      "cobranca": "assinatura",
+      "entrada": {
+        "Regiao": "Asia",
+        "Plataforma": "LinkedIn",
+        "Tier": "High Ticket",
+        "Orcamento": 50000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "rl",
+        "cobranca": "assinatura",
+        "preco_recomendado": 3572.678685755095,
+        "preco_bruto": 3572.678685755095,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 21279038.0,
+        "lucro_estimado_sl": 19530016.880708244,
+        "var_5_percent": 16627937.0,
+        "cvar_5_percent": 15579674.0,
+        "latencia_ms": 19.43768500132137
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "sl",
+      "cobranca": "assinatura",
+      "entrada": {
+        "Regiao": "Asia",
+        "Plataforma": "LinkedIn",
+        "Tier": "High Ticket",
+        "Orcamento": 50000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "sl",
+        "cobranca": "assinatura",
+        "preco_recomendado": 3349.625327321839,
+        "preco_bruto": 3349.625327321839,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 20572317.848734703,
+        "lucro_estimado_sl": 20572317.848734703,
+        "var_5_percent": 16486555.0,
+        "cvar_5_percent": 15440459.0,
+        "latencia_ms": 31.153626001469092
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "bandido",
+      "cobranca": "assinatura",
+      "entrada": {
+        "Regiao": "Asia",
+        "Plataforma": "LinkedIn",
+        "Tier": "High Ticket",
+        "Orcamento": 50000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "bandido",
+        "cobranca": "assinatura",
+        "preco_recomendado": 3349.625327321839,
+        "preco_bruto": 3349.625327321839,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 19804545.93971225,
+        "lucro_estimado_sl": 20572317.848734703,
+        "var_5_percent": 16486555.0,
+        "cvar_5_percent": 15440459.0,
+        "latencia_ms": 42.88971200003289
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "bc",
+      "cobranca": "assinatura",
+      "entrada": {
+        "Regiao": "Asia",
+        "Plataforma": "LinkedIn",
+        "Tier": "High Ticket",
+        "Orcamento": 50000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "bc",
+        "cobranca": "assinatura",
+        "preco_recomendado": 3437.400037280022,
+        "preco_bruto": 3437.400037280022,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": null,
+        "lucro_estimado_sl": 20188381.74995602,
+        "var_5_percent": 16596924.0,
+        "cvar_5_percent": 15526006.0,
+        "latencia_ms": 19.94661100252415
+      }
+    },
+    {
+      "rota": "/comparar",
+      "cobranca": "assinatura",
+      "entrada": {
+        "Regiao": "Asia",
+        "Plataforma": "LinkedIn",
+        "Tier": "High Ticket",
+        "Orcamento": 50000
+      },
+      "status": 200,
+      "resposta": [
+        {
+          "metodo": "rl",
+          "cobranca": "assinatura",
+          "preco_recomendado": 3572.678685755095,
+          "preco_bruto": 3572.678685755095,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 21279038.0,
+          "lucro_estimado_sl": 19530016.880708244,
+          "var_5_percent": 16627937.0,
+          "cvar_5_percent": 15579674.0,
+          "latencia_ms": 32.45327200056636
+        },
+        {
+          "metodo": "sl",
+          "cobranca": "assinatura",
+          "preco_recomendado": 3349.625327321839,
+          "preco_bruto": 3349.625327321839,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 20572317.848734703,
+          "lucro_estimado_sl": 20572317.848734703,
+          "var_5_percent": 16486555.0,
+          "cvar_5_percent": 15440459.0,
+          "latencia_ms": 48.85210600332357
+        },
+        {
+          "metodo": "bandido",
+          "cobranca": "assinatura",
+          "preco_recomendado": 3349.625327321839,
+          "preco_bruto": 3349.625327321839,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 19804545.93971225,
+          "lucro_estimado_sl": 20572317.848734703,
+          "var_5_percent": 16486555.0,
+          "cvar_5_percent": 15440459.0,
+          "latencia_ms": 39.80504699939047
+        },
+        {
+          "metodo": "bc",
+          "cobranca": "assinatura",
+          "preco_recomendado": 3437.400037280022,
+          "preco_bruto": 3437.400037280022,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": null,
+          "lucro_estimado_sl": 20188381.74995602,
+          "var_5_percent": 16596924.0,
+          "cvar_5_percent": 15526006.0,
+          "latencia_ms": 19.998681000288343
+        }
+      ]
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "rl",
+      "cobranca": "assinatura",
+      "entrada": {
+        "Regiao": "North America",
+        "Plataforma": "Facebook",
+        "Tier": "High Ticket",
+        "Orcamento": 200000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "rl",
+        "cobranca": "assinatura",
+        "preco_recomendado": 19031.252302708817,
+        "preco_bruto": 19031.252302708817,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 117711448.0,
+        "lucro_estimado_sl": 116158516.06973502,
+        "var_5_percent": 94868928.0,
+        "cvar_5_percent": 89948256.0,
+        "latencia_ms": 29.076863000227604
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "sl",
+      "cobranca": "assinatura",
+      "entrada": {
+        "Regiao": "North America",
+        "Plataforma": "Facebook",
+        "Tier": "High Ticket",
+        "Orcamento": 200000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "sl",
+        "cobranca": "assinatura",
+        "preco_recomendado": 19406.918819950726,
+        "preco_bruto": 19406.918819950726,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 119078443.73974192,
+        "lucro_estimado_sl": 119078443.73974192,
+        "var_5_percent": 94982960.0,
+        "cvar_5_percent": 90032304.0,
+        "latencia_ms": 67.71202800155152
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "bandido",
+      "cobranca": "assinatura",
+      "entrada": {
+        "Regiao": "North America",
+        "Plataforma": "Facebook",
+        "Tier": "High Ticket",
+        "Orcamento": 200000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "bandido",
+        "cobranca": "assinatura",
+        "preco_recomendado": 19406.918819950726,
+        "preco_bruto": 19406.918819950726,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": 115057090.79092778,
+        "lucro_estimado_sl": 119078443.73974192,
+        "var_5_percent": 94982960.0,
+        "cvar_5_percent": 90032304.0,
+        "latencia_ms": 55.142706998594804
+      }
+    },
+    {
+      "rota": "/recomendar",
+      "metodo": "bc",
+      "cobranca": "assinatura",
+      "entrada": {
+        "Regiao": "North America",
+        "Plataforma": "Facebook",
+        "Tier": "High Ticket",
+        "Orcamento": 200000
+      },
+      "status": 200,
+      "resposta": {
+        "metodo": "bc",
+        "cobranca": "assinatura",
+        "preco_recomendado": 16725.688283867956,
+        "preco_bruto": 16725.688283867956,
+        "kbs_applied": false,
+        "lucro_previsto_metodo": null,
+        "lucro_estimado_sl": 112505506.86702374,
+        "var_5_percent": 92400640.0,
+        "cvar_5_percent": 87217952.0,
+        "latencia_ms": 23.388598001474747
+      }
+    },
+    {
+      "rota": "/comparar",
+      "cobranca": "assinatura",
+      "entrada": {
+        "Regiao": "North America",
+        "Plataforma": "Facebook",
+        "Tier": "High Ticket",
+        "Orcamento": 200000
+      },
+      "status": 200,
+      "resposta": [
+        {
+          "metodo": "rl",
+          "cobranca": "assinatura",
+          "preco_recomendado": 19031.252302708817,
+          "preco_bruto": 19031.252302708817,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 117711448.0,
+          "lucro_estimado_sl": 116158516.06973502,
+          "var_5_percent": 94868928.0,
+          "cvar_5_percent": 89948256.0,
+          "latencia_ms": 30.509779000567505
+        },
+        {
+          "metodo": "sl",
+          "cobranca": "assinatura",
+          "preco_recomendado": 19406.918819950726,
+          "preco_bruto": 19406.918819950726,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 119078443.73974192,
+          "lucro_estimado_sl": 119078443.73974192,
+          "var_5_percent": 94982960.0,
+          "cvar_5_percent": 90032304.0,
+          "latencia_ms": 51.869130998966284
+        },
+        {
+          "metodo": "bandido",
+          "cobranca": "assinatura",
+          "preco_recomendado": 19406.918819950726,
+          "preco_bruto": 19406.918819950726,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": 115057090.79092778,
+          "lucro_estimado_sl": 119078443.73974192,
+          "var_5_percent": 94982960.0,
+          "cvar_5_percent": 90032304.0,
+          "latencia_ms": 39.880964999611024
+        },
+        {
+          "metodo": "bc",
+          "cobranca": "assinatura",
+          "preco_recomendado": 16725.688283867956,
+          "preco_bruto": 16725.688283867956,
+          "kbs_applied": false,
+          "lucro_previsto_metodo": null,
+          "lucro_estimado_sl": 112505506.86702374,
+          "var_5_percent": 92400640.0,
+          "cvar_5_percent": 87217952.0,
+          "latencia_ms": 19.941942999139428
+        }
+      ]
+    }
+  ]
+}

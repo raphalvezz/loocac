@@ -96,6 +96,7 @@ integrado ao produto. Motivos e texto para a monografia em
 
 Verificar a API em execução com os modelos treinados (uma chamada por método e
 cobrança): `LOCAC_API_KEY=... python verificar_api.py` (na pasta `project/`).
+Resultado em máquina limpa: [`project/docs/verificacao.md`](project/docs/verificacao.md).
 
 ## Segurança
 
