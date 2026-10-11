@@ -1,0 +1,8 @@
+{
+  "T": 12,
+  "kappa": 0.15,
+  "lambda": 0.85,
+  "sementes": 3,
+  "episodios_por_cenario": 200,
+  "passos_cql": 20000
+}

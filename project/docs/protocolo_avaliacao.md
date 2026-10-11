@@ -201,6 +201,44 @@ origem; checkpoint do CQL escolhido só na origem. Mede a queda origem − desti
 lucro do CQL e do BC usando só os 20% de dados não usados no treino, comparada com
 o lucro verdadeiro do simulador.
 
+### Resultado final do ambiente sequencial (2026-10-11, 5 sementes, CQL com 50.000 passos)
+
+`resultados/sequencial/` (tabela legível: `tabela_legivel.csv`). % do ótimo da
+programação dinâmica, média [IC 95%]:
+
+| política | venda Low | venda High | venda Todos | assin. Low | assin. High | assin. Todos |
+|---|---|---|---|---|---|---|
+| aleatorio | 56,0 | 72,4 | 64,2 | 72,4 | 71,8 | 72,1 |
+| meio_faixa | 62,9 | 84,4 | 73,6 | 79,3 | 78,9 | 79,1 |
+| sl | 65,3 | 84,7 | 75,0 [72,1; 77,9] | 93,2 | 85,5 | 89,3 [88,7; 90,0] |
+| bandido | 61,1 | 89,8 | 75,5 [75,0; 76,0] | 84,6 | 84,3 | 84,4 [83,9; 84,9] |
+| bc | 65,0 | 87,2 | 76,1 [73,6; 78,6] | 81,3 | 81,6 | 81,4 [81,0; 81,9] |
+| cql_g0 | 64,7 | 91,5 | 78,1 [77,6; 78,6] | 86,9 | 86,6 | 86,7 [86,4; 87,1] |
+| **cql_g095** | **72,5** | **96,5** | **84,5** [82,6; 86,3] | **98,5** | **98,2** | **98,4** [98,1; 98,7] |
+| oraculo_miope | 90,5 | 89,0 | 89,7 | 82,8 | 82,5 | 82,7 |
+
+Comparações pareadas (p.p., IC 95%):
+
+| | venda única | assinatura |
+|---|---|---|
+| **S1** `cql_g095 − bandido` | +9,0 (7,5 a 10,5) | +13,9 (13,4 a 14,5) |
+| **S2** `cql_g095 − cql_g0` | +6,4 (4,5 a 8,3) | +11,6 (11,0 a 12,2) |
+| `cql_g0 − bandido` | +2,6 (1,9 a 3,3) | +2,3 (1,9 a 2,7) |
+| `cql_g095 − oraculo_miope` | −5,3 (−7,1 a −3,4) | +15,7 (15,4 a 16,0) |
+
+- **S1 e S2 confirmados nas duas cobranças, no total e em cada tier** (todos os
+  limites inferiores acima de zero). O ganho do γ = 0,95 sobre o γ = 0 (6 a 12 p.p.)
+  é maior que o do CQL míope sobre o bandido (~2,5 p.p.): a vantagem vem de planejar.
+- Na assinatura o CQL com γ = 0,95 chega a 98,4% do ótimo e supera o oráculo míope
+  (que conhece o cenário) em 15,7 p.p.; a trajetória de preço quase coincide com a
+  da programação dinâmica (`docs/figuras/sequencial_trajetorias.png`). Na venda única
+  fica abaixo do oráculo míope no Low Ticket (−18 p.p.) e acima no High Ticket.
+- O SL na assinatura (89,3%) supera o bandido e o oráculo míope sem planejar: cobra
+  um preço constante ~19% abaixo do míope, o que por acaso constrói reputação.
+- Os limites da rodada preliminar continuam valendo (checkpoint escolhido pelo
+  simulador; κ e λ são hipóteses). A rodada preliminar está em
+  `resultados/sequencial_preliminar/`.
+
 ### Resultado preliminar do ambiente sequencial (2026-10-10, venda única, 3 sementes, 20.000 passos)
 
 | política | Low Ticket | High Ticket | Todos |

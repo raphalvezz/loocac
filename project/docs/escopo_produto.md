@@ -29,7 +29,8 @@ experimental de quando vale migrar para RL que planeja.
 > contextual na assinatura e 2,3 p.p. acima dele na venda única (5 sementes).
 > A vantagem clara do RL apareceu apenas no ambiente sequencial, em que o preço
 > de hoje altera a reputação e a demanda futura: com γ = 0,95, o CQL superou o
-> bandido e a sua própria versão míope (γ = 0) (seção 5.x). Esse ambiente não foi
+> bandido em 9,0 p.p. (venda única) e 13,9 p.p. (assinatura) e a sua própria versão
+> míope (γ = 0) em 6,4 e 11,6 p.p. (5 sementes, IC 95% acima de zero; seção 5.x). Esse ambiente não foi
 > integrado ao produto porque o sistema não observa a reputação da marca e
 > porque a intensidade do efeito intertemporal (κ, λ) é uma hipótese de
 > simulação. O resultado deve ser lido como um critério de decisão: o RL offline
@@ -40,8 +41,7 @@ experimental de quando vale migrar para RL que planeja.
 > CPU) e maior explicabilidade.
 
 Os números de referência estão em `docs/protocolo_avaliacao.md` (seção 6 e 9b) e
-em `resultados/final_5_sementes/` e `resultados/sequencial/`. Atualize a frase do
-ambiente sequencial com a rodada final de 5 sementes nas duas cobranças.
+em `resultados/final_5_sementes/` e `resultados/sequencial/`.
 
 ## O que mudaria para a opção (b)
 
