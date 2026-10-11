@@ -39,6 +39,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Qu
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+import avaliar_politicas as av
 import bandido  # noqa: F401  (classes necessárias para carregar bandido_*.joblib)
 import politicas as pol
 import simulador as sim
@@ -94,7 +95,7 @@ class CampaignInput(BaseModel):
     Tipo_Produto: str = Field(default=sim.CATEGORICAS_FIXAS["Tipo_Produto"], max_length=32)
     Modelo_Cobranca: str = Field(default=sim.CATEGORICAS_FIXAS["Modelo_Cobranca"], max_length=32)
     Complexidade_Oferta: str = Field(default=sim.CATEGORICAS_FIXAS["Complexidade_Oferta"], max_length=16)
-    # Memória da assinatura. Ausente -> média do treino (padronizada vira 0).
+    # Memória da assinatura. Ausente -> a de um cenário de treino parecido (estado_df).
     dias_desde_ultima_interacao: Optional[float] = Field(default=None, ge=0, le=10_000)
     clv_estimate_percentile: Optional[float] = Field(default=None, ge=0, le=1)
     avg_price_offered_segment_90d: Optional[float] = Field(default=None, ge=0, le=1_000_000)
@@ -133,11 +134,11 @@ class MarketConfig(BaseModel):
 
 
 # --- 3. Regra de segurança de preço (KBS), igual para todos os métodos -------
-# Faixas por Tier (padrões do painel "Gêmeo Digital"); config_market.json tem prioridade.
-DEFAULT_PRICE_RANGES = {
-    "Low Ticket": {"min": 10.0, "max": 97.0},
-    "High Ticket": {"min": 497.0, "max": 5000.0},
-}
+# Faixas por Tier: as dos cenários em que os modelos foram treinados (Low 10–100,
+# High 500–25.000); config_market.json (painel "Gêmeo Digital") tem prioridade.
+# Antes o padrão era 497–5.000 no High Ticket, o que cortava as recomendações dos
+# cenários de orçamento 100 mil e 200 mil (faixas 5.000–10.000 e 10.000–25.000).
+DEFAULT_PRICE_RANGES = {t: {"min": lo, "max": hi} for t, (lo, hi) in sim.faixas_tier(sim.CENARIOS_ARTIGO).items()}
 
 
 def get_price_range(tier: str) -> Dict[str, float]:
@@ -202,10 +203,15 @@ def estado_df(input_data: CampaignInput, cobranca: str) -> pd.DataFrame:
     """Estado em uma linha de DataFrame (entrada comum a todos os métodos)."""
     linha = input_data.model_dump()
     if cobranca == "assinatura":
-        scaler_memoria = models_state["scaler_assinatura_memoria"]
-        for col, media in zip(scaler_memoria.feature_names_in_, scaler_memoria.mean_):
+        # Memória ausente -> a de um cenário de treino do mesmo Tier e orçamento mais
+        # próximo (o de menor preço, quando dois coincidem). A média global do treino
+        # misturava Low e High Ticket (preço médio ofertado ~1.700 num Low Ticket) e
+        # tirava o estado da distribuição: o SL chegava a prever LTV de 11 milhões.
+        mesmo_tier = [c for c in av.carregar_cenarios() if c["Tier"] == input_data.Tier]
+        base = min(mesmo_tier, key=lambda c: (abs(np.log(c["Budget"] / input_data.Orcamento)), c["Price_Min"]))
+        for col, valor in sim.memoria_assinatura(base).items():
             if linha.get(col) is None:
-                linha[col] = float(media)
+                linha[col] = float(valor)
     return pd.DataFrame([linha])
 
 

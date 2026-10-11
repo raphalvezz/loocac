@@ -31,9 +31,10 @@ const mensagemDeErro = (erro: unknown) => {
 const CampaignSimulatorPage = () => {
   // 1. Configuração de Mercado (Gêmeo Digital)
   const [marketConfig, setMarketConfig] = useState({
-    lowMin: 10, lowMax: 97,
-    highMin: 497, highMax: 5000,
-    budgetMin: 500, budgetMax: 20000
+    // faixas dos cenários de treino (simulador.faixas_tier); a API usa as mesmas
+    lowMin: 10, lowMax: 100,
+    highMin: 500, highMax: 25000,
+    budgetMin: 100, budgetMax: 200000
   });
   const [isRetraining, setIsRetraining] = useState(false);
   const [marketMessage, setMarketMessage] = useState<string | null>(null);

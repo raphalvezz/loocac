@@ -123,3 +123,11 @@ def test_raiz_sem_chave_lista_metodos(cliente):
     r = cliente.get("/")
     assert r.status_code == 200
     assert r.json()["metodos"]["venda_unica"] == ["bandido", "bc", "rl", "sl"]
+
+
+def test_kbs_padrao_cobre_faixas_de_treino(cliente):
+    """A regra de segurança não pode cortar preços que os cenários de treino permitem."""
+    import main
+    import simulador as sim
+    for tier, (lo, hi) in sim.faixas_tier(sim.CENARIOS_ARTIGO).items():
+        assert main.DEFAULT_PRICE_RANGES[tier] == {"min": lo, "max": hi}
