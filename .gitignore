@@ -34,3 +34,6 @@ data/
 *.lnk
 project/colunas_observacao.json
 project/config_orcamento.json
+
+# Rodadas paralelas do sequencial (avaliar_sequencial.py --agregar)
+project/tmp/

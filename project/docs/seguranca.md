@@ -21,7 +21,7 @@ cd project && uvicorn main:app --port 8000
 npm run dev
 ```
 
-## Decisão sobre a chave no navegador (2026-10-12)
+## Decisão sobre a chave no navegador (2026-10-11)
 
 A chave em `VITE_LOCAC_API_KEY` vai no JavaScript entregue ao navegador e pode ser
 lida por qualquer pessoa com acesso à tela (DevTools, aba Rede ou o próprio

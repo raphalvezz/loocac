@@ -321,7 +321,7 @@ GPU e grau de explicabilidade.
 
 ## 11. Decisões que estavam em aberto antes da primeira rodada com CQL
 
-1. ~~**Observabilidade na venda única.**~~ **Decidido em 2026-10-12: manter o
+1. ~~**Observabilidade na venda única.**~~ **Decidido em 2026-10-11: manter o
    simulador v1.0 e declarar como limitação** (`docs/limitacoes.md`). Incluir um
    preço de referência no estado mudaria o simulador, a API e a tela depois de
    todas as rodadas; o teto observável (`oraculo_obs`) já é reportado junto.
@@ -329,7 +329,7 @@ GPU e grau de explicabilidade.
    5/6, então o teto (`oraculo_obs`) no Low Ticket é ~78% do ótimo. Opções: incluir
    um preço de referência do produto no estado (muda a API e a tela) ou manter e
    discutir como limitação.
-2. ~~**Pouca folga quando o cenário é identificável.**~~ **Decidido em 2026-10-12:
+2. ~~**Pouca folga quando o cenário é identificável.**~~ **Decidido em 2026-10-11:
    manter o simulador v1.0 e declarar como limitação.** Ampliar a variação de
    contexto agora invalidaria as rodadas finais; a pouca folga é reportada e é um
    dos motivos de o problema estático não separar bem os métodos (seção 6).
@@ -358,21 +358,65 @@ GPU e grau de explicabilidade.
 | 2026-10-08 | `sl_dataset_combined.csv` passa a incluir as colunas de memória | O SL de LTV (assinatura) usa o mesmo estado do CQL. Os dados gerados não mudam. |
 | 2026-10-09 | CQL e BC passam a usar a ação na faixa observável do estado (`escala_acao='estado'`); `politicas.CQL`/`treinar_cql.py` viram a versão canônica | Decidido **depois** das ablações (seção 9): com a ação na faixa do Tier, o crítico extrapola fora da faixa de dados do estado e o ator fica entre duas modas (Low Ticket ~50% do ótimo); com a faixa do estado, ~85% (venda única) e ~98% (assinatura) em treino curto. É a mesma faixa em que `sl` e `bandido` já buscavam o preço, então a comparação fica mais justa. As ablações publicadas usam a versão anterior (`tier`) na base. |
 | 2026-10-10 | FQE aprende a recompensa relativa à média da chave de estado (lucro / média − 1), não o lucro padronizado globalmente | Decidido **depois** da primeira rodada do FQE: com a padronização global a ordem entre estados saía certa (correlação ~1), mas o % do ótimo errava em centenas de p.p. nos estados de lucro pequeno. Com a escala por estado: CQL venda única 85,0% (simulador) contra 85,1% (FQE); BC erra +5,9 p.p.; assinatura ±1,2 p.p. |
-| 2026-10-12 | Seção 11, itens 1 e 2 (preço de referência no estado; folga do simulador): manter o simulador v1.0 e declarar como limitação | Mudar o estado ou a calibração depois das rodadas finais invalidaria a comparação; os dois pontos entram em `docs/limitacoes.md`. |
-| 2026-10-12 | Análise de sensibilidade **posterior** do bandido regularizado no deslocamento de público (`avaliar_bandido_robusto.py`) | Feita depois de ver a queda de 12–14 p.p. É exploratória: o bandido da comparação principal continua o registrado (`bandido.BandidoLGBM`). |
-| 2026-10-12 | Tela mostra "indisponível" (não "—" nem número) quando a API devolve `null` em lucro do método ou VaR/CVaR | O risco vem do crítico do RL para todos os métodos; sem o RL carregado, não há valor a mostrar. Conferido no navegador (`docs/figuras/tela_sem_rl.png`). |
+| 2026-10-11 | Seção 11, itens 1 e 2 (preço de referência no estado; folga do simulador): manter o simulador v1.0 e declarar como limitação | Mudar o estado ou a calibração depois das rodadas finais invalidaria a comparação; os dois pontos entram em `docs/limitacoes.md`. |
+| 2026-10-11 | Análise de sensibilidade **posterior** do bandido regularizado no deslocamento de público (`avaliar_bandido_robusto.py`) | Feita depois de ver a queda de 12–14 p.p. É exploratória: o bandido da comparação principal continua o registrado (`bandido.BandidoLGBM`). |
+| 2026-10-11 | Tela mostra "indisponível" (não "—" nem número) quando a API devolve `null` em lucro do método ou VaR/CVaR | O risco vem do crítico do RL para todos os métodos; sem o RL carregado, não há valor a mostrar. Conferido no navegador (`docs/figuras/tela_sem_rl.png`). |
 | 2026-10-08 | `oraculo_obs` passa a maximizar o % do ótimo, não o lucro médio em US$ | Erro de definição: maximizando US$, o cenário de lucro maior dominava e uma política observável (ε-greedy) passou do "teto". Na venda única o teto sobe de 83,6% para 88,9% (Low: 67% → 78%). |
 
 ## Como reproduzir
 
+Tudo na pasta `project/`, depois de `pip install -r ../requirements.txt`. Os
+tempos são de uma máquina de 4 núcleos sem GPU; os scripts com CQL dominam o
+tempo. Os resultados de referência já estão versionados em `resultados/`.
+
 ```bash
 cd project
-python -m pytest tests          # confirma que o simulador é o v1.0
-python avaliar_politicas.py     # 5 sementes; CQL incluído se o d3rlpy estiver instalado
-python avaliar_generalizacao.py # regiões e cenários fora do treino
-python simular_bandido_online.py --n-inicial 10   # bandido aprendendo em operação
-python figura_bandido_online.py
+python -m pytest tests                   # simulador v1.0, sequencial e API (~1 min com 4 threads)
+
+# Modelos usados pela API (ou baixe a release: docs/artefatos.md)
+python train_pipeline.py                 # ~4 h 30 (dois CQL de 50 mil passos)
+
+# Comparação principal (seção 6)
+python avaliar_politicas.py --saida resultados/final_5_sementes   # 5 sementes, ~12 h
+
+# Testes de ambiente (seção 9b)
+python avaliar_sequencial.py             # 5 sementes x 2 cobranças, ~20 h em série
+python figura_sequencial.py
+python avaliar_robustez.py               # demanda linear, 3 sementes, ~4 h 30
+python avaliar_deslocamento.py           # público novo, 3 sementes, ~4 h 30
+python avaliar_bandido_robusto.py        # sensibilidade do bandido, ~20 min
+python avaliar_fqe.py                    # FQE; precisa dos modelos do train_pipeline.py, ~15 min
+
+# Análises complementares
+python avaliar_generalizacao.py --sementes 3   # regiões e cenários fora do treino
+for n in 10 100; do   # 120 e 1.200 linhas iniciais
+  python simular_bandido_online.py --n-inicial $n --saida resultados/bandido_online_$((n*12))
+  python figura_bandido_online.py --entrada resultados/bandido_online_$((n*12))/bandido_online_curva.csv \
+      --saida docs/figuras/bandido_online_$((n*12))_iniciais.png
+done
+python ablacoes_cql.py && python diagnostico_cql.py
 ```
 
-Saídas em `resultados/`: `tabela_artigo.csv`, `comparacoes.csv`, `por_semente.csv`,
-`custo_explicabilidade.csv`, `generalizacao.csv`, `generalizacao_resumo.csv` e `manifesto.json`.
+O sequencial roda em paralelo, uma semente e cobrança por processo, e depois junta:
+
+```bash
+for m in venda_unica assinatura; do for s in 42 43 44 45 46; do
+  OMP_NUM_THREADS=1 python avaliar_sequencial.py --modelos $m --semente-inicial $s --sementes 1 \
+      --saida tmp/seq/${m}_s$s &
+done; done; wait
+python avaliar_sequencial.py --agregar tmp/seq/* --saida resultados/sequencial
+```
+
+| Script | Saída em `resultados/` | Seção |
+|---|---|---|
+| `avaliar_politicas.py` | `final_5_sementes/{tabela_artigo,comparacoes,por_semente,custo_explicabilidade}.csv`, `manifesto.json` | 6 |
+| `avaliar_sequencial.py` | `sequencial/{tabela,tabela_legivel,comparacoes,por_semente,trajetorias}.csv`, `manifesto.json` | 9b |
+| `figura_sequencial.py` | `docs/figuras/sequencial_trajetorias.png` | 9b |
+| `avaliar_robustez.py` | `robustez_linear/` | 9b |
+| `avaliar_deslocamento.py` | `deslocamento/{tabela,por_semente}.csv` | 9b |
+| `avaliar_bandido_robusto.py` | `bandido_robusto/{tabela,por_semente}.csv` | 9b |
+| `avaliar_fqe.py` | `fqe.csv`, `fqe_por_estado.csv` | 9b |
+| `avaliar_generalizacao.py` | `generalizacao.csv`, `generalizacao_resumo.csv` | 7 |
+| `simular_bandido_online.py` + `figura_bandido_online.py` | `bandido_online_{120,1200}/`, `docs/figuras/bandido_online_*_iniciais.png` | 8 |
+| `ablacoes_cql.py`, `diagnostico_cql.py` | `ablacoes_cql*.csv`, `diagnostico_cql.csv` | 9 |
+| `verificar_api.py` (API no ar) | `verificacao_api.json` | `docs/verificacao.md` |

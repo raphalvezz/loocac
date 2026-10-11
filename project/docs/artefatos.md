@@ -23,8 +23,8 @@ O pipeline executa, em ordem:
 | 2c | `treinar_bc.py` | `bc_venda_unica.d3/.joblib`, `bc_assinatura.d3/.joblib` |
 | 3 | `treinar_cql.py` (versão canônica do CQL) | `cql_venda_unica.d3/.joblib`, `cql_assinatura.d3/.joblib` |
 
-Os notebooks de RL (`código_final_RL_OFF (25).ipynb`, `RL_assinatura (5).ipynb`)
-documentam a versão anterior e não são executados pelo pipeline.
+Os notebooks de RL da versão anterior foram removidos (estão no histórico do git);
+o RL vem só de `treinar_cql.py`.
 
 Os dados são determinísticos (semente 42): o `data_manifest.json` traz o sha256
 de cada arquivo de dados, para conferir que duas máquinas geraram o mesmo
@@ -53,11 +53,20 @@ gh release create "$TAG" --title "Modelos treinados $TAG" \
   scaler_assinatura_memoria.joblib cenarios_treino.json faixas_tier.json data_manifest.json
 ```
 
+Sem o `gh` instalado: em GitHub → Releases → *Draft a new release*, crie a tag
+`modelos-AAAAMMDD` no commit que gerou os modelos e arraste os arquivos acima (e um
+`SHA256SUMS` gerado com `sha256sum * > SHA256SUMS`).
+
+Conjunto mínimo conferido em 2026-10-11: só esses 16 arquivos (14 MB) numa pasta
+com o código bastam para a API responder às 30 chamadas de `verificar_api.py` sem
+falhas.
+
 ## Usar uma versão publicada
 
 ```bash
 cd project
-gh release download modelos-AAAAMMDD     # baixa os anexos para a pasta atual
+gh release download modelos-AAAAMMDD     # ou baixe pela página da release
+sha256sum -c SHA256SUMS                  # confere os arquivos
 python ../start.py                       # encontra os modelos e só sobe a API
 ```
 

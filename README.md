@@ -30,8 +30,11 @@ project/
   tests/                    pytest (simulador, políticas, API de ponta a ponta)
 ```
 
-Os notebooks `código_final_RL_OFF (25).ipynb` e `RL_assinatura (5).ipynb`
-documentam a versão anterior do agente; a versão canônica é `politicas.CQL`.
+O RL é treinado só por `treinar_cql.py` (`politicas.CQL`). Os notebooks de RL da
+versão anterior (`código_final_RL_OFF (25).ipynb`, `RL_assinatura (5).ipynb`) e o
+backup do gerador antigo saíram do repositório; continuam no histórico do git
+(`git show 0f1d302:"project/RL_assinatura (5).ipynb"`). O único notebook que
+resta, `SL_FINAL (1).ipynb`, faz parte do pipeline.
 
 ## Instalação
 
@@ -75,13 +78,12 @@ curl -X POST "http://127.0.0.1:8000/comparar?cobranca=venda_unica" \
 
 ```bash
 cd project
-python avaliar_politicas.py         # 5 sementes, todas as abordagens
-python avaliar_generalizacao.py
-python simular_bandido_online.py --n-inicial 10 && python figura_bandido_online.py
-python ablacoes_cql.py && python diagnostico_cql.py
-python avaliar_sequencial.py && python figura_sequencial.py   # ambiente sequencial
+python avaliar_politicas.py --saida resultados/final_5_sementes   # comparação principal
+python avaliar_sequencial.py && python figura_sequencial.py         # ambiente sequencial
 python avaliar_robustez.py && python avaliar_deslocamento.py && python avaliar_fqe.py
 ```
+
+Lista completa, tempos e saídas: seção "Como reproduzir" do protocolo.
 
 Métrica, comparações, critérios de sucesso e desvios registrados:
 [`project/docs/protocolo_avaliacao.md`](project/docs/protocolo_avaliacao.md).
