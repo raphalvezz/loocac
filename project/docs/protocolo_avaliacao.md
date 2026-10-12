@@ -389,6 +389,8 @@ python avaliar_fqe.py                    # FQE; precisa dos modelos do train_pip
 
 # Análises complementares
 python avaliar_generalizacao.py           # regiões e cenários fora do treino, 1 semente, ~2 h
+# Bandido em operação: lento (refaz o bandido e os 5 modelos do Thompson a cada lote);
+# com 1 thread passou de 9 h sem terminar a 1ª semente de 5. Use várias threads.
 for n in 10 100; do   # 120 e 1.200 linhas iniciais
   python simular_bandido_online.py --n-inicial $n --saida resultados/bandido_online_$((n*12))
   python figura_bandido_online.py --entrada resultados/bandido_online_$((n*12))/bandido_online_curva.csv \
