@@ -388,7 +388,7 @@ python avaliar_bandido_robusto.py        # sensibilidade do bandido, ~20 min
 python avaliar_fqe.py                    # FQE; precisa dos modelos do train_pipeline.py, ~15 min
 
 # Análises complementares
-python avaliar_generalizacao.py --sementes 3   # regiões e cenários fora do treino
+python avaliar_generalizacao.py           # regiões e cenários fora do treino, 1 semente, ~10 h
 for n in 10 100; do   # 120 e 1.200 linhas iniciais
   python simular_bandido_online.py --n-inicial $n --saida resultados/bandido_online_$((n*12))
   python figura_bandido_online.py --entrada resultados/bandido_online_$((n*12))/bandido_online_curva.csv \
