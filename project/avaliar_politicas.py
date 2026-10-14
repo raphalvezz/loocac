@@ -179,6 +179,16 @@ def comparar(por_semente):
     return pd.DataFrame(linhas)
 
 
+def ler_custos(pasta, manifesto):
+    """Custos por semente; rodadas antigas só têm a média (custo_explicabilidade.csv),
+    que entra repetida uma vez por semente para pesar igual na média final."""
+    caminho = os.path.join(pasta, 'custos_por_semente.csv')
+    if os.path.exists(caminho):
+        return pd.read_csv(caminho)
+    medias = pd.read_csv(os.path.join(pasta, 'custo_explicabilidade.csv'))
+    return pd.concat([medias.assign(semente=s) for s in manifesto['sementes']], ignore_index=True)
+
+
 def resumir_custos(custos):
     return (custos.groupby(['modelo', 'politica'], sort=False)
             .agg(tempo_treino_s=('tempo_treino_s', 'mean'), latencia_ms=('latencia_ms', 'mean'),
@@ -189,22 +199,39 @@ def resumir_custos(custos):
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--sementes', type=int, default=len(SEMENTES_PADRAO),
-                   help='quantas sementes (a partir de 42); o protocolo usa 5')
+                   help='quantas sementes (a partir de --semente-inicial); o protocolo usa 10 (42-51)')
+    p.add_argument('--semente-inicial', type=int, default=42)
+    p.add_argument('--agregar', nargs='+', metavar='PASTA',
+                   help='só junta por_semente.csv/custos_por_semente.csv de rodadas anteriores')
     p.add_argument('--n-por-cenario', type=int, default=5000)
     p.add_argument('--passos-cql', type=int, default=50000)
     p.add_argument('--sem-cql', action='store_true', help='pula CQL e BC (sem d3rlpy/torch)')
     p.add_argument('--saida', default='resultados')
     args = p.parse_args()
-    args.sementes = list(range(42, 42 + args.sementes))
-    if not args.sem_cql:
+    args.sementes = list(range(args.semente_inicial, args.semente_inicial + args.sementes))
+    if args.agregar:
+        manifestos = [json.load(open(os.path.join(d, 'manifesto.json'))) for d in args.agregar]
+        if len({m['passos_cql'] for m in manifestos}) > 1:
+            raise SystemExit('rodadas com passos_cql diferentes')
+        por_semente = pd.concat([pd.read_csv(os.path.join(d, 'por_semente.csv')) for d in args.agregar],
+                                ignore_index=True)
+        if por_semente.duplicated(['modelo', 'politica', 'semente', 'tier']).any():
+            raise SystemExit('a mesma semente aparece em mais de uma pasta')
+        custos = pd.concat([ler_custos(d, m) for d, m in zip(args.agregar, manifestos)], ignore_index=True)
+        args.sementes = sorted(int(x) for x in por_semente['semente'].unique())
+        args.passos_cql, args.sem_cql = manifestos[0]['passos_cql'], not manifestos[0]['cql_incluido']
+        args.n_por_cenario = manifestos[0]['n_por_cenario']
+    elif not args.sem_cql:
         try:
             import d3rlpy  # noqa: F401
         except ImportError:
             print("d3rlpy não instalado: CQL fora da comparação (use --sem-cql para silenciar).")
             args.sem_cql = True
 
-    por_semente, custos = avaliar(args)
+    if not args.agregar:
+        por_semente, custos = avaliar(args)
     os.makedirs(args.saida, exist_ok=True)
+    pd.DataFrame(custos).to_csv(os.path.join(args.saida, 'custos_por_semente.csv'), index=False)
     tabela = resumir(por_semente)
     por_semente.to_csv(os.path.join(args.saida, 'por_semente.csv'), index=False)
     tabela.to_csv(os.path.join(args.saida, 'tabela_artigo.csv'), index=False)

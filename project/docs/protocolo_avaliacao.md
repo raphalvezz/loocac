@@ -83,6 +83,16 @@ resultados.
   Conclusão: "A > B" se o IC 95% da diferença estiver todo acima de 0; "A < B" se
   todo abaixo; senão, "inconclusivo".
 
+## 5b. Extensão para 10 sementes (registrada em 2026-10-14, antes de rodar)
+
+As sementes 47–51 são acrescentadas às 42–46 na comparação principal (todas as
+abordagens, CQL com 50.000 passos) e no ambiente sequencial (duas cobranças, CQL
+com 50.000 passos). Nada mais muda: mesmos dados por semente, mesmas políticas,
+mesmos critérios. As tabelas finais passam a usar as 10 sementes; as de 5 sementes
+ficam como estão em `resultados/final_5_sementes/` e no histórico do git, para mostrar
+se alguma conclusão (C1–C3, S1–S2) muda com a amostra maior. Se mudar, a conclusão
+reportada é a de 10 sementes e a mudança fica registrada aqui.
+
 ## 6. Critérios de sucesso (confirmados em 2026-10-09)
 
 Avaliados no total (Todos) e por tier, separadamente para venda única e assinatura:
