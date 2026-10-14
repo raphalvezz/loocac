@@ -23,6 +23,12 @@ Segurança mínima (protótipo acadêmico):
   - Entradas validadas (categorias fechadas, limites numéricos).
   - /configure_market exige a chave e recusa um retreino enquanto outro roda.
 Não há autenticação de usuários nem proteção de dados: ver Limitações.
+
+Rota experimental /recomendar_sequencial: CQL com γ = 0,95 treinado no ambiente
+sequencial (treinar_cql_sequencial.py). O estado da campanha (reputação e
+período) fica persistido por cliente_id em SQLite (estado_sequencial.py). A
+reputação é a do Gêmeo Digital (sequencial.proxima_reputacao), não uma medida
+real: ver docs/escopo_produto.md.
 """
 
 import json
@@ -38,13 +44,15 @@ from typing import Any, Dict, List, Literal, Optional
 import joblib
 import numpy as np
 import pandas as pd
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 import avaliar_politicas as av
+import estado_sequencial as es
 import bandido  # noqa: F401  (classes necessárias para carregar bandido_*.joblib)
 import politicas as pol
+import sequencial as sq
 import simulador as sim
 
 # --- 1. Configuração e segurança --------------------------------------------
@@ -119,6 +127,35 @@ class Recomendacao(BaseModel):
     cvar_5_metodo: Optional[float]
     fonte_risco_metodo: Optional[str]        # 'critico_quantilico' | 'regressao_quantilica' | None
     latencia_ms: float
+
+
+class CampanhaSequencialInput(CampaignInput):
+    cliente_id: str = Field(pattern=r"^[A-Za-z0-9_.-]{1,64}$")
+
+
+class RecomendacaoSequencial(BaseModel):
+    cliente_id: str
+    cobranca: str
+    periodo: int                       # período que acabou de ser precificado (1..T)
+    periodos_total: int
+    campanha_encerrada: bool
+    preco_recomendado: float
+    preco_bruto: float
+    kbs_applied: bool
+    reputacao_antes: float
+    reputacao_depois: float            # reputação do Gêmeo Digital após cobrar o preço
+    lucro_esperado_gemeo: float        # ρ · lucro esperado no cenário-base do Gêmeo Digital
+    latencia_ms: float
+
+
+class EstadoCampanha(BaseModel):
+    cliente_id: str
+    cobranca: str
+    contexto: Dict[str, Any]
+    reputacao: float
+    periodo: int
+    periodos_total: int
+    historico: List[Dict[str, Any]]
 
 
 class MarketConfig(BaseModel):
@@ -196,6 +233,13 @@ def load_models():
             except Exception as e:  # arquivo ausente ou incompatível
                 novo["erros"][f"{metodo}/{cob}"] = str(e)
 
+    novo["sequencial"] = {}
+    for cob in COBRANCAS:
+        try:
+            novo["sequencial"][cob] = pol.CQL.carregar(f"cql_seq_{cob}")
+        except Exception as e:
+            novo["erros"][f"sequencial/{cob}"] = str(e)
+
     models_state.clear()
     models_state.update(novo)
     carregados = {c: sorted(m) for c, m in novo["metodos"].items()}
@@ -205,6 +249,13 @@ def load_models():
 
 
 # --- 5. Recomendação ---------------------------------------------------------
+def cenario_base(input_data: CampaignInput) -> Dict[str, Any]:
+    """Cenário de treino mais parecido: mesmo Tier, orçamento mais próximo (em log) e,
+    no empate, o de menor preço."""
+    mesmo_tier = [c for c in av.carregar_cenarios() if c["Tier"] == input_data.Tier]
+    return min(mesmo_tier, key=lambda c: (abs(np.log(c["Budget"] / input_data.Orcamento)), c["Price_Min"]))
+
+
 def estado_df(input_data: CampaignInput, cobranca: str) -> pd.DataFrame:
     """Estado em uma linha de DataFrame (entrada comum a todos os métodos)."""
     linha = input_data.model_dump()
@@ -213,9 +264,7 @@ def estado_df(input_data: CampaignInput, cobranca: str) -> pd.DataFrame:
         # próximo (o de menor preço, quando dois coincidem). A média global do treino
         # misturava Low e High Ticket (preço médio ofertado ~1.700 num Low Ticket) e
         # tirava o estado da distribuição: o SL chegava a prever LTV de 11 milhões.
-        mesmo_tier = [c for c in av.carregar_cenarios() if c["Tier"] == input_data.Tier]
-        base = min(mesmo_tier, key=lambda c: (abs(np.log(c["Budget"] / input_data.Orcamento)), c["Price_Min"]))
-        for col, valor in sim.memoria_assinatura(base).items():
+        for col, valor in sim.memoria_assinatura(cenario_base(input_data)).items():
             if linha.get(col) is None:
                 linha[col] = float(valor)
     return pd.DataFrame([linha])
@@ -297,6 +346,70 @@ def rota_comparar(input_data: CampaignInput, cobranca: Cobranca = Query("venda_u
     return [recomendar(m, cobranca, input_data) for m in disponiveis]
 
 
+# --- Rota experimental: campanha sequencial com estado persistido ------------
+CONTEXTO_CAMPANHA = ("Regiao", "Plataforma", "Tier", "Orcamento")
+
+
+@app.post("/recomendar_sequencial", response_model=RecomendacaoSequencial, dependencies=[Depends(exigir_chave)])
+def recomendar_sequencial(input_data: CampanhaSequencialInput, cobranca: Cobranca = Query("venda_unica")):
+    """Preço do período atual da campanha de `cliente_id` pelo CQL γ = 0,95 e avanço do estado.
+
+    A primeira chamada cria a campanha (ρ = 1, período 0) com o contexto enviado; as
+    seguintes precisam do mesmo contexto (409 se mudar). Depois de T períodos a
+    campanha se encerra (409); DELETE /sequencial/{cliente_id} reinicia."""
+    inicio = time.perf_counter()
+    agente = models_state.get("sequencial", {}).get(cobranca)
+    if agente is None:
+        motivo = models_state.get("erros", {}).get(f"sequencial/{cobranca}")
+        raise HTTPException(status_code=503, detail=f"Agente sequencial indisponível para {cobranca}: {motivo} "
+                                                    "(rode treinar_cql_sequencial.py)")
+    contexto = {k: getattr(input_data, k) for k in CONTEXTO_CAMPANHA}
+    base = cenario_base(input_data)
+    with es.transacao() as con:
+        estado = es.ler(con, input_data.cliente_id, cobranca) or \
+            es.criar(con, input_data.cliente_id, cobranca, contexto, sq.RHO_0)
+        if estado["contexto"] != contexto:
+            raise HTTPException(status_code=409, detail="Contexto diferente do da campanha em andamento "
+                                                        f"({estado['contexto']}); reinicie com DELETE.")
+        t, rho = estado["periodo"], estado["reputacao"]
+        if t >= sq.T:
+            raise HTTPException(status_code=409, detail=f"Campanha encerrada ({sq.T} períodos); reinicie com DELETE.")
+        estados = estado_df(input_data, cobranca).assign(reputacao=rho, periodo=t / sq.T)
+        preco_bruto = float(agente.precos(estados)[0])
+        preco, kbs = apply_kbs(preco_bruto, input_data.Tier)
+        p_ref = sq.preco_referencia(base, input_data.Regiao, input_data.Plataforma, cobranca)
+        rho_novo = float(sq.proxima_reputacao(rho, preco, p_ref))
+        lucro = float(sq.lucro(rho, preco, base, input_data.Regiao, input_data.Plataforma, cobranca))
+        es.avancar(con, input_data.cliente_id, cobranca, t, preco, rho, rho_novo, lucro)
+    return RecomendacaoSequencial(
+        cliente_id=input_data.cliente_id, cobranca=cobranca, periodo=t + 1, periodos_total=sq.T,
+        campanha_encerrada=t + 1 >= sq.T, preco_recomendado=preco, preco_bruto=preco_bruto, kbs_applied=kbs,
+        reputacao_antes=rho, reputacao_depois=rho_novo, lucro_esperado_gemeo=lucro,
+        latencia_ms=(time.perf_counter() - inicio) * 1000)
+
+
+@app.get("/sequencial/{cliente_id}", response_model=EstadoCampanha, dependencies=[Depends(exigir_chave)])
+def ler_campanha(cliente_id: str = Path(pattern=r"^[A-Za-z0-9_.-]{1,64}$"),
+                 cobranca: Cobranca = Query("venda_unica")):
+    with es.transacao() as con:
+        estado = es.ler(con, cliente_id, cobranca)
+        if estado is None:
+            raise HTTPException(status_code=404, detail="Campanha não encontrada.")
+        hist = es.historico(con, cliente_id, cobranca)
+    return EstadoCampanha(cliente_id=cliente_id, cobranca=cobranca, contexto=estado["contexto"],
+                          reputacao=estado["reputacao"], periodo=estado["periodo"], periodos_total=sq.T,
+                          historico=hist)
+
+
+@app.delete("/sequencial/{cliente_id}", dependencies=[Depends(exigir_chave)])
+def apagar_campanha(cliente_id: str = Path(pattern=r"^[A-Za-z0-9_.-]{1,64}$"),
+                    cobranca: Cobranca = Query("venda_unica")):
+    with es.transacao() as con:
+        if not es.apagar(con, cliente_id, cobranca):
+            raise HTTPException(status_code=404, detail="Campanha não encontrada.")
+    return {"status": "removida", "cliente_id": cliente_id, "cobranca": cobranca}
+
+
 def run_retraining_pipeline():
     """Roda o pipeline de treino e recarrega os modelos ao final."""
     try:
@@ -336,5 +449,6 @@ def read_root():
     return {
         "status": "LOCAC API Online",
         "metodos": {c: sorted(m) for c, m in models_state.get("metodos", {}).items()},
+        "sequencial": sorted(models_state.get("sequencial", {})),
         "retreino_em_andamento": retreino_em_andamento.is_set(),
     }

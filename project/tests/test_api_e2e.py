@@ -31,6 +31,7 @@ def cliente(tmp_path_factory):
 
         import avaliar_politicas as av
         import politicas as pol
+        import sequencial as sq
         import treinar_bandido
         import treinar_quantis
 
@@ -43,8 +44,11 @@ def cliente(tmp_path_factory):
         for cob in ["venda_unica", "assinatura"]:
             pol.BC(cob, cenarios, n_passos=300).treinar(dados, 42).salvar(f"bc_{cob}")
             pol.CQL(cob, cenarios, n_passos=200).treinar(dados, 42).salvar(f"cql_{cob}")  # treinar_cql.py, curto
+            pol.CQL(cob, cenarios, n_passos=200, gamma=0.95, extras=sq.EXTRAS, escala_recompensa="estado") \
+                .treinar(sq.gerar_dados(cenarios, 5, 42, cob), 42).salvar(f"cql_seq_{cob}")  # treinar_cql_sequencial.py
 
         os.environ["LOCAC_API_KEY"] = CHAVE
+        os.environ["LOCAC_ESTADO_DB"] = str(pasta / "estado.sqlite")
         main = importlib.reload(importlib.import_module("main"))
         main.load_models()
         with TestClient(main.app) as c:
@@ -143,3 +147,59 @@ def test_kbs_padrao_cobre_faixas_de_treino(cliente):
     import simulador as sim
     for tier, (lo, hi) in sim.faixas_tier(sim.CENARIOS_ARTIGO).items():
         assert main.DEFAULT_PRICE_RANGES[tier] == {"min": lo, "max": hi}
+
+
+# --- Rota experimental /recomendar_sequencial ---------------------------------
+SEQ = {**ESTADO, "cliente_id": "cliente-1"}
+
+
+def test_sequencial_persiste_estado_entre_chamadas(cliente):
+    import sequencial as sq
+    _ = cliente.delete("/sequencial/cliente-1", headers={"X-API-Key": CHAVE})
+    anteriores = []
+    for t in range(1, 4):
+        r = _post(cliente, "/recomendar_sequencial", corpo=SEQ, cobranca="venda_unica")
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert d["periodo"] == t and d["periodos_total"] == sq.T
+        if anteriores:
+            assert d["reputacao_antes"] == pytest.approx(anteriores[-1]["reputacao_depois"])
+        else:
+            assert d["reputacao_antes"] == pytest.approx(sq.RHO_0)
+        anteriores.append(d)
+    estado = cliente.get("/sequencial/cliente-1", params={"cobranca": "venda_unica"},
+                         headers={"X-API-Key": CHAVE}).json()
+    assert estado["periodo"] == 3 and len(estado["historico"]) == 3
+    assert estado["reputacao"] == pytest.approx(anteriores[-1]["reputacao_depois"])
+    # persistido em disco: outra conexão lê o mesmo estado
+    import estado_sequencial as es
+    with es.transacao() as con:
+        assert es.ler(con, "cliente-1", "venda_unica")["periodo"] == 3
+
+
+def test_sequencial_contexto_fim_e_reinicio(cliente):
+    import sequencial as sq
+    h = {"X-API-Key": CHAVE}
+    cliente.delete("/sequencial/cliente-2", headers=h)
+    corpo = {**SEQ, "cliente_id": "cliente-2"}
+    assert _post(cliente, "/recomendar_sequencial", corpo=corpo).status_code == 200
+    outro = {**corpo, "Regiao": "Asia"}
+    assert _post(cliente, "/recomendar_sequencial", corpo=outro).status_code == 409
+    for _ in range(sq.T - 1):
+        d = _post(cliente, "/recomendar_sequencial", corpo=corpo).json()
+    assert d["periodo"] == sq.T and d["campanha_encerrada"]
+    assert _post(cliente, "/recomendar_sequencial", corpo=corpo).status_code == 409
+    assert cliente.delete("/sequencial/cliente-2", headers=h).status_code == 200
+    assert _post(cliente, "/recomendar_sequencial", corpo=corpo).json()["periodo"] == 1
+    # a outra cobrança é outra campanha
+    assert _post(cliente, "/recomendar_sequencial", corpo=corpo, cobranca="assinatura").json()["periodo"] == 1
+
+
+@pytest.mark.parametrize("cliente_id", ["", "a b", "x" * 65, "../etc"])
+def test_sequencial_valida_cliente_id(cliente, cliente_id):
+    assert _post(cliente, "/recomendar_sequencial", corpo={**SEQ, "cliente_id": cliente_id}).status_code == 422
+
+
+def test_sequencial_exige_chave(cliente):
+    assert _post(cliente, "/recomendar_sequencial", corpo=SEQ, chave=None).status_code == 401
+    assert cliente.get("/sequencial/cliente-1").status_code == 401

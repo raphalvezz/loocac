@@ -30,7 +30,9 @@ problema de passo único consegue separar os métodos.
 A vantagem clara do RL (CQL γ = 0,95 sobre o bandido: +9,0 p.p. na venda única e
 +13,9 p.p. na assinatura) aparece só no ambiente sequencial, em que o preço muda a
 reputação e a demanda futura. A intensidade desse efeito (κ = 0,15, λ = 0,85) foi
-calibrada, não medida. O produto serve a decisão de passo único
+calibrada, não medida. O produto serve a decisão de passo único; a rota experimental
+`/recomendar_sequencial` serve o agente sequencial com estado persistido por cliente,
+mas a reputação que ela acompanha é a do Gêmeo Digital, não uma medida real
 (`docs/escopo_produto.md`).
 
 ## 4. Seleção de checkpoint com o simulador

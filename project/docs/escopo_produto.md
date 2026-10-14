@@ -5,7 +5,14 @@ o estado da campanha, recomendam um preço. O ambiente sequencial
 (`sequencial.py`) **não** está integrado ao produto. Ele é a evidência
 experimental de quando vale migrar para RL que planeja.
 
-## Por que não integrar o agente sequencial agora
+**Atualização (2026-10-14): rota experimental `/recomendar_sequencial`.** A API passou
+a servir também o CQL com γ = 0,95 do ambiente sequencial, com o estado da campanha
+persistido por cliente (detalhes abaixo, em "Rota experimental"). A decisão acima
+continua valendo para o produto principal: a rota sequencial é uma demonstração de
+como o agente seria servido, e a reputação que ela usa é a do Gêmeo Digital, não uma
+medida real. Os motivos abaixo explicam por que ela não substitui `/recomendar`.
+
+## Por que o agente sequencial não é o padrão do produto
 
 1. **O estado sequencial não existe no produto.** O agente sequencial precisa da
    reputação ρ da marca naquele público e do período da campanha. O sistema não
@@ -43,10 +50,32 @@ experimental de quando vale migrar para RL que planeja.
 Os números de referência estão em `docs/protocolo_avaliacao.md` (seção 6 e 9b) e
 em `resultados/final_5_sementes/` e `resultados/sequencial/`.
 
-## O que mudaria para a opção (b)
+## Rota experimental (opção b, implementada em 2026-10-14)
 
-Uma rota `POST /recomendar_campanha` receberia também `reputacao` (ou o proxy) e
-`periodo`, e usaria um `pol.CQL` treinado com `extras=sequencial.EXTRAS` sobre
-dados logados de campanhas em vários períodos. O código de treino e avaliação já
-existe em `avaliar_sequencial.py`; faltam o proxy de reputação, os dados reais e
-a validação.
+```
+POST   /recomendar_sequencial?cobranca=venda_unica   corpo: estado da campanha + cliente_id
+GET    /sequencial/{cliente_id}?cobranca=...         estado atual e histórico
+DELETE /sequencial/{cliente_id}?cobranca=...         reinicia a campanha
+```
+
+- **Modelo:** `cql_seq_{cobrança}` (`treinar_cql_sequencial.py`, ou
+  `train_pipeline.py --sequencial`), a mesma configuração do `cql_g095` da avaliação:
+  estado com reputação e período, recompensa por contexto, 50.000 passos. Sem o
+  arquivo, a rota devolve 503 e o resto da API funciona.
+- **Estado persistido:** SQLite (`estado_sequencial.py`, arquivo `LOCAC_ESTADO_DB`,
+  padrão `estado_sequencial.sqlite`). Escolhido por ser da biblioteca padrão,
+  sobreviver a reinícios da API e não exigir servidor; cada chamada lê e grava a
+  campanha numa transação exclusiva, então duas chamadas simultâneas do mesmo cliente
+  não avançam o mesmo período duas vezes. Uma campanha é (cliente_id, cobrança): a
+  primeira chamada fixa o contexto (região, plataforma, tier, orçamento) e começa com
+  ρ = 1 no período 0; chamadas com outro contexto recebem 409; depois de 12 períodos a
+  campanha se encerra (409) até um DELETE.
+- **Cada chamada** recomenda o preço do período atual, supõe que ele foi praticado
+  e avança o estado: ρ' = clip(ρ + κ (p_ref − p) / p_ref), com p_ref do cenário de
+  treino mais parecido (mesmo Tier, orçamento mais próximo), e devolve o lucro
+  esperado do Gêmeo Digital naquele período.
+- **O que falta para uso real:** trocar a reputação simulada por um proxy observável
+  (conversão recente contra a esperada, por exemplo), receber o preço efetivamente
+  praticado e o resultado observado em vez de supor o recomendado, e autenticar o
+  cliente (hoje qualquer portador da chave da API lê ou reinicia qualquer cliente_id;
+  ver `docs/seguranca.md`).

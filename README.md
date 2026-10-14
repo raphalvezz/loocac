@@ -91,9 +91,11 @@ Métrica, comparações, critérios de sucesso e desvios registrados:
 ## Escopo
 
 A API e a tela servem a decisão de preço de **passo único**. O ambiente sequencial
-(`project/sequencial.py`, o preço de hoje muda a demanda de amanhã) é um
-experimento: mostra quando o RL que planeja passa a valer a pena, mas não está
-integrado ao produto. Motivos e texto para a monografia em
+(`project/sequencial.py`, o preço de hoje muda a demanda de amanhã) mostra quando o
+RL que planeja passa a valer a pena; a rota experimental `POST /recomendar_sequencial`
+serve esse agente com o estado da campanha (reputação do Gêmeo Digital e período)
+persistido por `cliente_id` em SQLite. Ela exige `python train_pipeline.py --sequencial`.
+Motivos, limites e texto para a monografia em
 [`project/docs/escopo_produto.md`](project/docs/escopo_produto.md).
 
 Verificar a API em execução com os modelos treinados (uma chamada por método e

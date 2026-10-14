@@ -21,6 +21,15 @@ cd project && uvicorn main:app --port 8000
 npm run dev
 ```
 
+## Rota sequencial e cliente_id (2026-10-14)
+
+`/recomendar_sequencial` e `/sequencial/{cliente_id}` guardam estado por `cliente_id`
+num arquivo SQLite local. O `cliente_id` é validado (1–64 caracteres de
+`[A-Za-z0-9_.-]`, o que também impede caminhos como `../`) e as consultas usam
+parâmetros (sem SQL montado por texto), mas **não é autenticado**: quem tem a chave
+da API pode ler, avançar ou apagar a campanha de qualquer cliente. Para uso real, o
+cliente sairia da identidade autenticada, não de um campo do corpo.
+
 ## Decisão sobre a chave no navegador (2026-10-11)
 
 A chave em `VITE_LOCAC_API_KEY` vai no JavaScript entregue ao navegador e pode ser

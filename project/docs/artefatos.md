@@ -23,6 +23,7 @@ O pipeline executa, em ordem:
 | 2c | `treinar_bc.py` | `bc_venda_unica.d3/.joblib`, `bc_assinatura.d3/.joblib` |
 | 2d | `treinar_quantis.py` | quantis do SL e do bandido, gravados nos mesmos `.joblib` |
 | 3 | `treinar_cql.py` (versão canônica do CQL) | `cql_venda_unica.d3/.joblib`, `cql_assinatura.d3/.joblib` |
+| 4 (opcional, `--sequencial`) | `treinar_cql_sequencial.py` | `cql_seq_venda_unica.d3/.joblib`, `cql_seq_assinatura.d3/.joblib` (rota `/recomendar_sequencial`) |
 
 Os notebooks de RL da versão anterior foram removidos (estão no histórico do git);
 o RL vem só de `treinar_cql.py`.

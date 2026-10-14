@@ -18,7 +18,7 @@ def run_command(command, description):
         print(f"   ❌ ERRO FATAL ao executar: {description}")
         sys.exit(1)
 
-def run_pipeline():
+def run_pipeline(sequencial=False):
     print("="*60)
     print("🚀 INICIANDO PIPELINE DE AUTOMATIZAÇÃO (LOCAC)")
     print("="*60)
@@ -50,6 +50,11 @@ def run_pipeline():
     # 3. Treinar o RL (CQL) pela versão canônica (politicas.CQL)
     run_command(f"{sys.executable} treinar_cql.py", "3. Treinando RL (CQL) - venda única e assinatura")
 
+    # 4. (opcional, --sequencial) CQL γ = 0,95 do ambiente sequencial, para a rota
+    #    experimental /recomendar_sequencial (mais 2 a 4 horas em CPU)
+    if sequencial:
+        run_command(f"{sys.executable} treinar_cql_sequencial.py", "4. Treinando CQL sequencial (γ = 0,95)")
+
     # A comparação com os baselines (várias sementes, retreina o CQL) é um passo
     # separado e demorado: python avaliar_politicas.py (docs/protocolo_avaliacao.md)
 
@@ -58,4 +63,5 @@ def run_pipeline():
     print("="*60)
 
 if __name__ == "__main__":
-    run_pipeline()
+    # python train_pipeline.py [--sequencial]
+    run_pipeline(sequencial="--sequencial" in sys.argv[1:])
