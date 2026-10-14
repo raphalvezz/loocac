@@ -313,6 +313,45 @@ Comparações pareadas (p.p., IC 95%):
   extrapola a curva de lucro aprendida com a região como variável, e a região do
   destino é uma categoria nunca vista.
 
+## 9c. Risco (VaR/CVaR 5%) de cada método (2026-10-14)
+
+SL e bandido ganharam regressão quantílica (`treinar_quantis.py`: LightGBM com
+`objective='quantile'` nos quantis 1%, 2,5%, 5%, 10%, 50% e 90%, mesmas features e
+escala do alvo). Assim os três métodos com modelo de lucro têm um VaR/CVaR 5%
+próprio: crítico quantílico (CQL) ou regressão quantílica (SL, bandido); o BC não
+tem. A API devolve esse risco em `var_5_metodo`/`cvar_5_metodo`/`fonte_risco_metodo`,
+além da avaliação comum pelo crítico (`var_5_percent`/`cvar_5_percent`).
+
+`avaliar_risco.py` compara cada estimativa com o valor exato do simulador (o ruído é
+lognormal conhecido: VaR exato = E(p)·exp(−σ²/2 + σ·z₀,₀₅)), no preço recomendado e
+numa grade de 5 preços por estado. Erro em % do lucro ótimo do estado; cobertura =
+probabilidade real de o lucro ficar abaixo do VaR estimado (ideal 5%).
+Modelos da verificação em máquina limpa (`resultados/risco.csv`):
+
+| | erro abs. VaR (grade) | cobertura (grade) | erro abs. VaR (preço recomendado) | cobertura (preço rec.) |
+|---|---|---|---|---|
+| CQL venda única | 175% | 9,6% | 105% | 6,6% |
+| SL venda única | 5,4% | 6,8% | 25,5% | 20,1% |
+| Bandido venda única | 5,1% | 6,7% | 27,7% | 19,0% |
+| CQL assinatura | 73% | 48,8% | 83% | 55,1% |
+| SL assinatura | 2,6% | 6,9% | 2,1% | 5,2% |
+| Bandido assinatura | 3,0% | 6,9% | 2,7% | 4,0% |
+
+- A regressão quantílica é bem calibrada: erro de 2–6% do lucro ótimo e cobertura
+  de 5–7% na grade; no conjunto de teste os quantis 1%, 5%, 50% e 90% cobrem 1,1%,
+  5,0–5,4%, 50% e 90–92%.
+- O crítico do CQL **não** serve como medida de risco: na venda única subestima o VaR
+  (fica negativo no Low Ticket) e na assinatura o superestima (o lucro fica abaixo
+  do "VaR 5%" em ~50% dos casos). O termo conservador do CQL empurra os valores Q
+  para baixo fora dos dados e a escala da recompensa distorce a cauda; o crítico
+  serve para escolher o preço, não para medir a distribuição do lucro.
+- No preço recomendado da venda única, Low Ticket, SL e bandido também erram (~45%):
+  ali o estado não identifica o cenário, e o quantil aprendido é o da mistura dos
+  cenários que dividem a chave (limitação de observabilidade, seção 11). No High
+  Ticket o erro é de 5–6%.
+- Consequência para a API: a coluna "VaR 5% (RL)" da avaliação comum herda esses
+  erros; o risco próprio do SL e do bandido é o mais confiável.
+
 ## 10. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),
@@ -361,6 +400,7 @@ GPU e grau de explicabilidade.
 | 2026-10-11 | Seção 11, itens 1 e 2 (preço de referência no estado; folga do simulador): manter o simulador v1.0 e declarar como limitação | Mudar o estado ou a calibração depois das rodadas finais invalidaria a comparação; os dois pontos entram em `docs/limitacoes.md`. |
 | 2026-10-11 | Análise de sensibilidade **posterior** do bandido regularizado no deslocamento de público (`avaliar_bandido_robusto.py`) | Feita depois de ver a queda de 12–14 p.p. É exploratória: o bandido da comparação principal continua o registrado (`bandido.BandidoLGBM`). |
 | 2026-10-11 | Tela mostra "indisponível" (não "—" nem número) quando a API devolve `null` em lucro do método ou VaR/CVaR | O risco vem do crítico do RL para todos os métodos; sem o RL carregado, não há valor a mostrar. Conferido no navegador (`docs/figuras/tela_sem_rl.png`). |
+| 2026-10-14 | Regressão quantílica no SL e no bandido; API com risco próprio por método; rotas legadas `/recommend_price` e `/recommend_subscription_price` removidas | Comparação simétrica de risco (seção 9c). Não muda as decisões de preço nem a comparação principal. |
 | 2026-10-08 | `oraculo_obs` passa a maximizar o % do ótimo, não o lucro médio em US$ | Erro de definição: maximizando US$, o cenário de lucro maior dominava e uma política observável (ε-greedy) passou do "teto". Na venda única o teto sobe de 83,6% para 88,9% (Low: 67% → 78%). |
 
 ## Como reproduzir
@@ -386,6 +426,7 @@ python avaliar_robustez.py               # demanda linear, 3 sementes, ~4 h 30
 python avaliar_deslocamento.py           # público novo, 3 sementes, ~4 h 30
 python avaliar_bandido_robusto.py        # sensibilidade do bandido, ~20 min
 python avaliar_fqe.py                    # FQE; precisa dos modelos do train_pipeline.py, ~15 min
+python avaliar_risco.py                  # calibração do VaR/CVaR; idem (com treinar_quantis.py), ~5 min
 
 # Análises complementares
 python avaliar_generalizacao.py           # regiões e cenários fora do treino, 1 semente, ~2 h
@@ -418,6 +459,7 @@ python avaliar_sequencial.py --agregar tmp/seq/* --saida resultados/sequencial
 | `avaliar_deslocamento.py` | `deslocamento/{tabela,por_semente}.csv` | 9b |
 | `avaliar_bandido_robusto.py` | `bandido_robusto/{tabela,por_semente}.csv` | 9b |
 | `avaliar_fqe.py` | `fqe.csv`, `fqe_por_estado.csv` | 9b |
+| `treinar_quantis.py` + `avaliar_risco.py` | `risco.csv`, `risco_por_estado.csv` | 9c |
 | `avaliar_generalizacao.py` | `generalizacao.csv`, `generalizacao_resumo.csv` | 7 |
 | `simular_bandido_online.py` + `figura_bandido_online.py` | `bandido_online_{120,1200}/`, `docs/figuras/bandido_online_*_iniciais.png` | 8 |
 | `ablacoes_cql.py`, `diagnostico_cql.py` | `ablacoes_cql*.csv`, `diagnostico_cql.csv` | 9 |

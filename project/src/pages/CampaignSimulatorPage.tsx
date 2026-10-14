@@ -210,7 +210,7 @@ const CampaignSimulatorPage = () => {
                 {recomendacoes.length > 1 ? 'Comparação de métodos' : 'AI Recommendation'}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                Todos os preços passam pela mesma regra de faixa (KBS). Lucro (SL), ROI e risco são calculados pelo mesmo avaliador para todos os métodos: o risco (VaR/CVaR) vem dos quantis do crítico do RL no preço de cada método e fica indisponível se o RL não estiver carregado. O BC não tem modelo de lucro próprio.
+                Todos os preços passam pela mesma regra de faixa (KBS). Lucro (SL), ROI e risco são calculados pelo mesmo avaliador para todos os métodos: o risco (VaR/CVaR) vem dos quantis do crítico do RL no preço de cada método e fica indisponível se o RL não estiver carregado. O risco do método vem do modelo de incerteza dele (crítico do CQL; regressão quantílica no SL e no bandido); o BC não tem modelo de lucro nem de risco próprios.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {recomendacoes.map((rec) => (
@@ -230,6 +230,8 @@ const CampaignSimulatorPage = () => {
                           ['Lucro (método)', ouIndisponivel(rec.lucro_previsto_metodo)],
                           ['Lucro (SL)', ouIndisponivel(rec.lucro_estimado_sl)],
                           ['ROI (SL)', rec.lucro_estimado_sl == null ? INDISPONIVEL : `${((rec.lucro_estimado_sl / formData.budget) * 100).toFixed(1)}%`],
+                          ['VaR 5% (método)', ouIndisponivel(rec.var_5_metodo)],
+                          ['CVaR 5% (método)', ouIndisponivel(rec.cvar_5_metodo)],
                           ['VaR 5% (RL)', ouIndisponivel(rec.var_5_percent)],
                           ['CVaR 5% (RL)', ouIndisponivel(rec.cvar_5_percent)],
                         ].map(([rotulo, valor]) => (

@@ -21,6 +21,7 @@ O pipeline executa, em ordem:
 | 2 | `SL_FINAL (1).ipynb` | `sl_profit_regressor_model.joblib`, `sl_ltv_regressor_model.joblib`, `docs/figuras/shap_sl_venda_unica.png` |
 | 2b | `treinar_bandido.py` | `bandido_venda_unica.joblib`, `bandido_assinatura.joblib` |
 | 2c | `treinar_bc.py` | `bc_venda_unica.d3/.joblib`, `bc_assinatura.d3/.joblib` |
+| 2d | `treinar_quantis.py` | quantis do SL e do bandido, gravados nos mesmos `.joblib` |
 | 3 | `treinar_cql.py` (versão canônica do CQL) | `cql_venda_unica.d3/.joblib`, `cql_assinatura.d3/.joblib` |
 
 Os notebooks de RL da versão anterior foram removidos (estão no histórico do git);

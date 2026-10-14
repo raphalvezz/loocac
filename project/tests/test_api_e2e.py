@@ -32,12 +32,14 @@ def cliente(tmp_path_factory):
         import avaliar_politicas as av
         import politicas as pol
         import treinar_bandido
+        import treinar_quantis
 
         dados = pd.read_csv("sl_dataset_combined.csv")
         cenarios = av.carregar_cenarios()
         joblib.dump(pol.SL("venda_unica", cenarios).treinar(dados, 42), "sl_profit_regressor_model.joblib")
         joblib.dump(pol.SL("assinatura", cenarios).treinar(dados, 42), "sl_ltv_regressor_model.joblib")
         treinar_bandido.main()
+        treinar_quantis.main()
         for cob in ["venda_unica", "assinatura"]:
             pol.BC(cob, cenarios, n_passos=300).treinar(dados, 42).salvar(f"bc_{cob}")
             pol.CQL(cob, cenarios, n_passos=200).treinar(dados, 42).salvar(f"cql_{cob}")  # treinar_cql.py, curto
@@ -70,6 +72,15 @@ def test_uma_chamada_por_metodo(cliente, metodo, cobranca):
     assert np.isfinite(d["lucro_estimado_sl"])
     assert d["cvar_5_percent"] <= d["var_5_percent"]
     assert (d["lucro_previsto_metodo"] is None) == (metodo == "bc")
+    fonte = {"rl": "critico_quantilico", "sl": "regressao_quantilica",
+             "bandido": "regressao_quantilica", "bc": None}[metodo]
+    assert d["fonte_risco_metodo"] == fonte
+    if fonte is None:
+        assert d["var_5_metodo"] is None and d["cvar_5_metodo"] is None
+    else:
+        assert d["cvar_5_metodo"] <= d["var_5_metodo"]
+    if metodo == "rl":  # o risco próprio do CQL é o mesmo da avaliação comum
+        assert d["var_5_metodo"] == pytest.approx(d["var_5_percent"])
 
 
 def test_comparar_devolve_todos_os_metodos(cliente):
@@ -78,9 +89,10 @@ def test_comparar_devolve_todos_os_metodos(cliente):
     assert [x["metodo"] for x in r.json()] == ["rl", "sl", "bandido", "bc"]
 
 
-def test_rota_antiga_continua_funcionando(cliente):
-    r = _post(cliente, "/recommend_price", metodo="bandido")
-    assert r.status_code == 200 and r.json()["metodo"] == "bandido"
+@pytest.mark.parametrize("rota", ["/recommend_price", "/recommend_subscription_price"])
+def test_rotas_legadas_removidas(cliente, rota):
+    """Substituídas por /recomendar?cobranca= e /comparar."""
+    assert _post(cliente, rota, metodo="bandido").status_code in (404, 405)
 
 
 @pytest.mark.parametrize("chave", [None, "errada"])

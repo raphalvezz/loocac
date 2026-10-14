@@ -29,5 +29,8 @@ export interface Recomendacao {
   lucro_estimado_sl: number | null;       // avaliação comum: SL no preço final
   var_5_percent: number | null;           // avaliação comum: quantis do crítico do RL
   cvar_5_percent: number | null;
+  var_5_metodo: number | null;            // risco do próprio método (crítico do CQL ou regressão quantílica)
+  cvar_5_metodo: number | null;
+  fonte_risco_metodo: 'critico_quantilico' | 'regressao_quantilica' | null;
   latencia_ms: number;
 }

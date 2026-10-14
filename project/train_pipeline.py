@@ -44,8 +44,10 @@ def run_pipeline():
     # 2c. Treinar e exportar o behavior cloning (imitação do histórico)
     run_command(f"{sys.executable} treinar_bc.py", "2c. Treinando Behavior Cloning (BC)")
 
-    # 3. Treinar o RL (CQL) pela versão canônica (politicas.CQL); os notebooks
-    #    de RL ficam só como documentação da versão anterior
+    # 2d. Regressão quantílica do SL e do bandido (VaR/CVaR próprios desses métodos)
+    run_command(f"{sys.executable} treinar_quantis.py", "2d. Treinando quantis do SL e do bandido")
+
+    # 3. Treinar o RL (CQL) pela versão canônica (politicas.CQL)
     run_command(f"{sys.executable} treinar_cql.py", "3. Treinando RL (CQL) - venda única e assinatura")
 
     # A comparação com os baselines (várias sementes, retreina o CQL) é um passo

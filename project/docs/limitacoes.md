@@ -53,13 +53,21 @@ custo dentro da distribuição (`resultados/bandido_robusto/`).
 > mudança de público; uma regularização moderada reduz essa perda pela metade sem
 > perder desempenho no público original. O CQL se manteve estável sem ajuste.
 
-## 6. Risco (VaR/CVaR) depende do crítico do RL
+## 6. Risco (VaR/CVaR)
 
-O VaR e o CVaR de 5% exibidos para todos os métodos vêm dos quantis do crítico do
-CQL, avaliados no preço de cada método. É um avaliador comum, não uma medida
-própria de cada método, e herda os erros do crítico. Sem o modelo de RL carregado,
-a API devolve `null` e a tela mostra "indisponível" (`docs/figuras/tela_sem_rl.png`).
-O BC não tem modelo de lucro próprio (também "indisponível").
+Cada método com modelo de lucro tem um VaR/CVaR 5% próprio: crítico quantílico no
+CQL e regressão quantílica no SL e no bandido (o BC não tem). Comparados com o valor
+exato do simulador (`resultados/risco.csv`, seção 9c do protocolo), os quantis do SL
+e do bandido são bem calibrados (erro de 2–6% do lucro ótimo; cobertura de 5–7%
+para um alvo de 5%), mas o crítico do CQL não: subestima a cauda na venda única e a
+superestima na assinatura, onde o lucro fica abaixo do "VaR 5%" em ~50% dos casos.
+A avaliação comum da tela ("VaR 5% (RL)") herda esse erro. Onde o estado não
+identifica o cenário (venda única, Low Ticket), nenhum método acerta o risco do
+cenário real.
+
+> O crítico do CQL, treinado com o termo conservador, é útil para escolher preços,
+> mas não fornece uma distribuição calibrada do lucro; para medir risco, a regressão
+> quantílica dos modelos supervisionados foi mais confiável.
 
 ## 7. Segurança
 

@@ -11,6 +11,9 @@ Toda recomendação passa pelo MESMO caminho: preço do método -> regra de faix
 (KBS) -> lucro previsto pelo próprio método (quando ele tem modelo de lucro)
 -> avaliação comum: lucro do SL e risco (VaR/CVaR 5%) dos quantis do crítico
 do RL, ambos no preço final. Assim os métodos são comparáveis entre si.
+Além da avaliação comum, cada método devolve o próprio risco quando tem um
+modelo de incerteza: crítico quantílico (rl) ou regressão quantílica (sl,
+bandido; treinar_quantis.py). O BC não tem.
 
 Segurança mínima (protótipo acadêmico):
   - LOCAC_API_KEY: chave exigida no header X-API-Key em todas as rotas, exceto
@@ -112,6 +115,9 @@ class Recomendacao(BaseModel):
     lucro_estimado_sl: Optional[float]       # avaliação comum: SL no preço final
     var_5_percent: Optional[float]           # avaliação comum: quantis do crítico do RL
     cvar_5_percent: Optional[float]
+    var_5_metodo: Optional[float]            # risco do próprio método (None: sem modelo de incerteza)
+    cvar_5_metodo: Optional[float]
+    fonte_risco_metodo: Optional[str]        # 'critico_quantilico' | 'regressao_quantilica' | None
     latencia_ms: float
 
 
@@ -228,9 +234,20 @@ def risco(cobranca: str, estados: pd.DataFrame, preco: float):
     rl = models_state.get("metodos", {}).get(cobranca, {}).get("rl")
     if rl is None:
         return None, None
-    quantis = rl.quantis_reais(estados, [preco]).ravel()
-    var_5 = float(np.quantile(quantis, 0.05))
-    return var_5, float(quantis[quantis <= var_5].mean())
+    var_5, cvar_5 = rl.risco(estados, [preco])
+    return float(var_5[0]), float(cvar_5[0])
+
+
+def risco_metodo(p, estados: pd.DataFrame, preco: float):
+    """VaR/CVaR 5% pelo modelo de incerteza do próprio método, se ele tiver um."""
+    if isinstance(p, pol.CQL):
+        fonte = "critico_quantilico"
+    elif getattr(p, "tem_quantis", False):
+        fonte = "regressao_quantilica"
+    else:
+        return None, None, None
+    var_5, cvar_5 = p.risco(estados, [preco])
+    return float(var_5[0]), float(cvar_5[0]), fonte
 
 
 def lucro_previsto(p, cobranca: str, estados: pd.DataFrame, preco: float) -> Optional[float]:
@@ -250,11 +267,13 @@ def recomendar(metodo: str, cobranca: str, input_data: CampaignInput) -> Recomen
         preco, kbs = apply_kbs(preco_bruto, input_data.Tier)
         sl = models_state["metodos"][cobranca].get("sl")
         var_5, cvar_5 = risco(cobranca, estados, preco)
+        var_m, cvar_m, fonte = risco_metodo(p, estados, preco)
         return Recomendacao(
             metodo=metodo, cobranca=cobranca, preco_recomendado=preco, preco_bruto=preco_bruto,
             kbs_applied=kbs, lucro_previsto_metodo=lucro_previsto(p, cobranca, estados, preco),
             lucro_estimado_sl=float(sl.prever_lucro(estados, [preco])[0]) if sl is not None else None,
             var_5_percent=var_5, cvar_5_percent=cvar_5,
+            var_5_metodo=var_m, cvar_5_metodo=cvar_m, fonte_risco_metodo=fonte,
             latencia_ms=(time.perf_counter() - inicio) * 1000,
         )
     except Exception as e:
@@ -276,17 +295,6 @@ def rota_comparar(input_data: CampaignInput, cobranca: Cobranca = Query("venda_u
     if not disponiveis:
         raise HTTPException(status_code=503, detail="Nenhum método carregado (rode train_pipeline.py).")
     return [recomendar(m, cobranca, input_data) for m in disponiveis]
-
-
-# Rotas antigas, mantidas por compatibilidade (agora aceitam ?metodo=)
-@app.post("/recommend_price", response_model=Recomendacao, dependencies=[Depends(exigir_chave)])
-def recommend_price(input_data: CampaignInput, metodo: Metodo = Query("rl")):
-    return recomendar(metodo, "venda_unica", input_data)
-
-
-@app.post("/recommend_subscription_price", response_model=Recomendacao, dependencies=[Depends(exigir_chave)])
-def recommend_subscription_price(input_data: CampaignInput, metodo: Metodo = Query("rl")):
-    return recomendar(metodo, "assinatura", input_data)
 
 
 def run_retraining_pipeline():

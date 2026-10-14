@@ -67,6 +67,9 @@ def main():
                 checar(lo * 0.999 <= p <= hi * 1.001, f'{rotulo}: preço {p:.2f} fora de [{lo:.2f}, {hi:.2f}]')
                 checar(corpo['lucro_estimado_sl'] is not None, f'{rotulo}: sem lucro_estimado_sl')
                 checar(corpo['var_5_percent'] is not None, f'{rotulo}: sem VaR')
+                fonte = {'rl': 'critico_quantilico', 'bc': None}.get(metodo, 'regressao_quantilica')
+                checar(corpo.get('fonte_risco_metodo') == fonte,
+                       f'{rotulo}: fonte do risco próprio {corpo.get("fonte_risco_metodo")!r}, esperado {fonte!r}')
                 print(f'  {rotulo:32s} preço {p:12,.2f}  lucro SL {corpo["lucro_estimado_sl"] or 0:14,.0f}  '
                       f'{corpo["latencia_ms"]:.0f} ms')
             r = cli.post('/comparar', params={'cobranca': cobranca}, json=caso)
