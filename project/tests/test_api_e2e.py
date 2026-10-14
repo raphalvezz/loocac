@@ -40,7 +40,10 @@ def cliente(tmp_path_factory):
         joblib.dump(pol.SL("venda_unica", cenarios).treinar(dados, 42), "sl_profit_regressor_model.joblib")
         joblib.dump(pol.SL("assinatura", cenarios).treinar(dados, 42), "sl_ltv_regressor_model.joblib")
         treinar_bandido.main()
-        treinar_quantis.main()
+        # quantis do SL e do bandido (treinar_quantis.py), numa amostra para o teste ser rápido
+        amostra = dados.sample(4000, random_state=0)
+        for caminho in treinar_quantis.ARQUIVOS.values():
+            joblib.dump(joblib.load(caminho).treinar_quantis(amostra, 42, fracao_treino=1.0), caminho)
         for cob in ["venda_unica", "assinatura"]:
             pol.BC(cob, cenarios, n_passos=300).treinar(dados, 42).salvar(f"bc_{cob}")
             pol.CQL(cob, cenarios, n_passos=200).treinar(dados, 42).salvar(f"cql_{cob}")  # treinar_cql.py, curto
