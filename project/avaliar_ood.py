@@ -23,6 +23,10 @@ Ambiente sequencial (cql_seq_<modelo>, trajetórias dos 144 contextos, 12 perío
                         reputações logadas naquele contexto e período.
   dist_reputacao        distância à reputação logada mais próxima (mesmo contexto e
                         período), em unidades de ρ.
+  fora_reputacao_global reputação fora do intervalo logado no mesmo período, juntando
+                        todos os contextos (ρ é uma entrada contínua comum a todos).
+  acima_p99_global      reputação acima do percentil 99 logado no período (região
+                        com poucos dados, que a coleta aleatória quase não produz).
   mais o fora_faixa_cenario e o na_borda de cada passo.
 
 Entradas: cql_*.d3/.joblib, cql_seq_*.d3/.joblib e sl_dataset_combined.csv na pasta
@@ -85,6 +89,8 @@ def sequencial(modelo, cenarios):
     logados = sq.gerar_dados(cenarios, 200, sim.SEED, modelo)
     treino = logados.iloc[: int(len(logados) * pol.FRACAO_TREINO)]
     rep_log = treino.groupby(CONTEXTO + ['passo'])['reputacao'].apply(np.asarray)
+    por_periodo = treino.groupby('passo')['reputacao']
+    rmin, rmax, r99 = por_periodo.min(), por_periodo.max(), por_periodo.quantile(0.99)
     av_seq = sq.Avaliador(cenarios, modelo)
     linhas = []
     rho = np.full(len(av_seq.contextos), sq.RHO_0)
@@ -101,7 +107,8 @@ def sequencial(modelo, cenarios):
             dist.append(float(np.min(np.abs(obs - rr))))
             fora.append(bool(rr < obs.min() - 1e-9 or rr > obs.max() + 1e-9))
         linhas.append(pd.concat([estados[CONTEXTO + ['Tier']].reset_index(drop=True), m], axis=1).assign(
-            modelo=modelo, periodo=t, reputacao=rho, preco=precos, dist_reputacao=dist, fora_reputacao=fora))
+            modelo=modelo, periodo=t, reputacao=rho, preco=precos, dist_reputacao=dist, fora_reputacao=fora,
+            fora_reputacao_global=(rho < rmin[t] - 1e-9) | (rho > rmax[t] + 1e-9), acima_p99_global=rho > r99[t]))
         rho = sq.proxima_reputacao(rho, precos, av_seq.p_ref)
     return pd.concat(linhas, ignore_index=True)
 
@@ -119,6 +126,8 @@ def resumir(df, ambiente):
                           'vizinhos_mediana': float(g['vizinhos'].median())})
         if 'fora_reputacao' in g:
             linha.update({'fora_reputacao_pct': 100 * g['fora_reputacao'].mean(),
+                          'fora_reputacao_global_pct': 100 * g['fora_reputacao_global'].mean(),
+                          'acima_p99_global_pct': 100 * g['acima_p99_global'].mean(),
                           'dist_reputacao_mediana': float(g['dist_reputacao'].median()),
                           'dist_reputacao_p95': float(g['dist_reputacao'].quantile(0.95))})
         out.append(linha)

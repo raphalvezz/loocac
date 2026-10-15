@@ -74,6 +74,17 @@ cenário real.
 > mas não fornece uma distribuição calibrada do lucro; para medir risco, a regressão
 > quantílica dos modelos supervisionados foi mais confiável.
 
+## 6b. Extrapolação no estado (ambiente sequencial)
+
+No problema estático o CQL não escolhe ações fora do suporte dos dados (0% fora da
+faixa; ação sempre numa região com a densidade normal de dados). No sequencial a
+ação continua dentro da faixa, mas o agente que planeja leva a reputação a valores
+que a coleta aleatória quase não produz: na assinatura, 44% dos passos ficam acima do
+percentil 99 das reputações logadas (`resultados/ood/`, seção 9e do protocolo). O
+desempenho continua alto porque, no simulador, a demanda responde de forma suave à
+reputação; num mercado real, a resposta a uma reputação nunca observada é exatamente
+o que os dados não informam.
+
 ## 7. Segurança
 
 Chave de API única e visível no navegador, sem autenticação por usuário, sem

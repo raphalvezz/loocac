@@ -507,6 +507,44 @@ Modelos da verificação em máquina limpa (`resultados/risco.csv`):
 - Consequência para a API: a coluna "VaR 5% (RL)" da avaliação comum herda esses
   erros; o risco próprio do SL e do bandido é o mais confiável.
 
+## 9e. O CQL sai do suporte dos dados? (2026-10-15)
+
+`avaliar_ood.py` mede, nas recomendações do CQL, a distância aos dados de treino
+(`resultados/ood/`). Verificação empírica, não prova.
+
+**Problema estático** (`cql_<modelo>`, 144 estados): nenhuma ação fora da faixa
+observável do estado (0%), nenhuma saturada na borda (0%), e a ação escolhida tem em
+mediana 15–18 linhas de treino do mesmo contexto a menos de 0,05 (a densidade normal
+da coleta uniforme). Na venda única, Low Ticket, 33% dos preços caem fora da faixa
+do cenário verdadeiro; o bandido, o SL e o próprio oráculo observável fazem
+exatamente o mesmo (33,3%): é o limite de observabilidade (seção 11), não
+extrapolação do CQL. Com a ação na faixa do estado (seção 12), o CQL não tem como
+escolher preços sem dado.
+
+**Ambiente sequencial** (`cql_seq_<modelo>`, 144 contextos × 12 períodos): a ação
+continua dentro da faixa (0% fora, ≤ 0,7% na borda), mas **o estado sai do suporte**:
+o CQL que planeja leva a reputação a valores que a coleta aleatória quase não produz.
+
+| | venda única | assinatura |
+|---|---|---|
+| reputação fora do intervalo logado do mesmo contexto e período | 44,9% | 87,0% |
+| idem, juntando todos os contextos no período | 5,2% | 6,0% |
+| acima do percentil 99 logado no período | 6,9% | 43,9% |
+| distância à reputação logada mais próxima (mediana / p95) | 0,02 / 0,27 | 0,12 / 0,39 |
+
+Na assinatura o agente passa quase metade da campanha numa faixa de reputação
+(> p99 dos dados) com pouquíssimas observações, e ainda assim chega a 98,6% do
+ótimo: a rede generaliza bem em ρ, que entra de forma suave no lucro. É o tipo de
+extrapolação que o termo conservador do CQL controla na **ação**, mas não no
+**estado**; num mercado real, a resposta da demanda a uma reputação nunca observada
+poderia ser diferente da simulada. Registrado em `docs/limitacoes.md`.
+
+**Rota da API com os modelos de produção** (`cql_seq_*`: 83,8% e 98,6% do ótimo
+da programação dinâmica nos 144 contextos): uma campanha de 12 períodos (High
+Ticket, orçamento 50 mil, Europe/Instagram) feita pela API dá 98,8% (venda única) e
+98,1% (assinatura) do ótimo daquele contexto; o preço começa em 0,79× e 0,62× o
+preço míope e sobe ao longo da campanha; a 13ª chamada recebe 409.
+
 ## 10. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),
@@ -583,6 +621,8 @@ python avaliar_bandido_robusto.py        # sensibilidade do bandido, ~20 min
 python avaliar_fqe.py                    # FQE; precisa dos modelos do train_pipeline.py, ~15 min
 python avaliar_risco.py                  # calibração do VaR/CVaR; idem (com treinar_quantis.py), ~5 min
 python avaliar_selecao_ope.py --sementes 3   # FQE x WIS na escolha do checkpoint, ~6 h
+python avaliar_ood.py                    # suporte dos dados (com os modelos do pipeline), ~5 min
+python analise_estatistica.py            # Holm/Bonferroni, poder, distância ao ótimo (segundos)
 
 # Análises complementares
 python avaliar_generalizacao.py           # regiões e cenários fora do treino, 1 semente, ~2 h
@@ -617,6 +657,8 @@ python avaliar_sequencial.py --agregar tmp/seq/* --saida resultados/sequencial
 | `avaliar_fqe.py` | `fqe.csv`, `fqe_por_estado.csv` | 9b |
 | `treinar_quantis.py` + `avaliar_risco.py` | `risco.csv`, `risco_por_estado.csv` | 9c |
 | `avaliar_selecao_ope.py` | `selecao_ope/{checkpoints,resumo}.csv` | 9d |
+| `avaliar_ood.py` (precisa de `train_pipeline.py --sequencial`) | `ood/{resumo,estatico_por_estado,sequencial_por_passo}.csv` | 9e |
+| `analise_estatistica.py` | `estatistica/{testes,poder,distancia_oraculo}.csv` | 5, 6, 9b |
 | `avaliar_generalizacao.py` | `generalizacao.csv`, `generalizacao_resumo.csv` | 7 |
 | `simular_bandido_online.py` + `figura_bandido_online.py` | `bandido_online_{120,1200}/`, `docs/figuras/bandido_online_*_iniciais.png` | 8 |
 | `ablacoes_cql.py`, `diagnostico_cql.py` | `ablacoes_cql*.csv`, `diagnostico_cql.csv` | 9 |
