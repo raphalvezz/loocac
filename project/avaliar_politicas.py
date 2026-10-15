@@ -35,6 +35,7 @@ import pandas as pd
 from scipy import stats
 
 import bandido as ban
+import cenarios_sensibilidade as cs
 import politicas as pol
 import simulador as sim
 
@@ -43,11 +44,16 @@ TIERS = ['Low Ticket', 'High Ticket', 'Todos']
 # Políticas comparadas (as variantes do bandido em operação estão em simular_bandido_online.py)
 TODAS = [pol.Aleatoria, pol.MeioFaixa, pol.MaximoFaixa, pol.SL, ban.BandidoLGBM, pol.BC, pol.CQL,
          pol.OraculoObservavel, pol.Oraculo]
+# Disponíveis por --politicas, fora da lista padrão (baselines clássicos adicionais)
+EXTRAS = {'ucb1': lambda m, c: ban.BandidoTabular(m, c, 'ucb1'),
+          'thompson_tab': lambda m, c: ban.BandidoTabular(m, c, 'thompson')}
 SEMENTES_PADRAO = list(range(42, 52))  # 10 sementes (protocolo, seção 5b)
 # Comparações pareadas fixadas no protocolo (A - B)
 COMPARACOES = [('cql', 'aleatorio'), ('cql', 'meio_faixa'), ('cql', 'sl'), ('cql', 'bandido'), ('cql', 'bc'),
                ('sl', 'aleatorio'), ('sl', 'meio_faixa'),
-               ('bandido', 'aleatorio'), ('bandido', 'meio_faixa'), ('bandido', 'sl')]
+               ('bandido', 'aleatorio'), ('bandido', 'meio_faixa'), ('bandido', 'sl'),
+               ('cql', 'ucb1'), ('bandido', 'ucb1'), ('ucb1', 'meio_faixa'),
+               ('cql', 'thompson_tab'), ('bandido', 'thompson_tab'), ('thompson_tab', 'meio_faixa')]
 
 
 def carregar_cenarios():
@@ -121,16 +127,21 @@ def construir_politicas(modelo, cenarios, args):
                                avaliador=metrica_selecao(modelo, cenarios)))
         else:
             out.append(cls(modelo, cenarios))
+    out += [fabrica(modelo, cenarios) for nome, fabrica in EXTRAS.items() if nome in (args.politicas or ())]
+    if args.politicas:  # só as pedidas (o oráculo sempre, como referência do % do ótimo)
+        out = [p for p in out if p.nome in args.politicas or p.nome == 'oraculo']
     return out
 
 
 def avaliar(args):
-    cenarios = carregar_cenarios()
+    cenarios = cs.conjunto(args.cenarios) if args.cenarios else carregar_cenarios()
     estados = sim.contextos(cenarios)
     linhas, custos = [], []
     for semente in args.sementes:
         print(f"\n=== semente {semente}: gerando dados ===")
         dados = sim.gerar_dados(cenarios, args.n_por_cenario, semente)
+        if args.fracao_dados < 1:  # curva de aprendizado: só o começo do dataset embaralhado
+            dados = dados.iloc[: int(len(dados) * args.fracao_dados)].reset_index(drop=True)
         for modelo in MODELOS:
             otimo = lucros(consultar(pol.Oraculo(modelo, cenarios), estados), estados, cenarios, modelo)
             for politica in construir_politicas(modelo, cenarios, args):
@@ -172,6 +183,9 @@ def comparar(por_semente):
         if a not in tab or b not in tab:
             continue
         for (modelo, tier), g in tab.groupby(level=['modelo', 'tier'], sort=False):
+            g = g[[a, b]].dropna()  # só as sementes em que as duas políticas rodaram
+            if len(g) < 2:
+                continue
             media, lo, hi = ic95(g[a] - g[b])  # pareado: mesma semente = mesmo dataset
             linhas.append({'modelo': modelo, 'tier': tier, 'comparacao': f'{a} - {b}', 'n_sementes': len(g),
                            'diferenca_pp': media, 'ic95_inf': lo, 'ic95_sup': hi,
@@ -207,12 +221,17 @@ def main():
     p.add_argument('--passos-cql', type=int, default=50000)
     p.add_argument('--sem-cql', action='store_true', help='pula CQL e BC (sem d3rlpy/torch)')
     p.add_argument('--saida', default='resultados')
+    p.add_argument('--cenarios', choices=cs.CONJUNTOS, help='conjunto de cenários (cenarios_sensibilidade.py)')
+    p.add_argument('--fracao-dados', type=float, default=1.0, help='fração do dataset usada (curva de aprendizado)')
+    p.add_argument('--politicas', nargs='+', help=f'só estas políticas (nomes); extras: {sorted(EXTRAS)}')
     args = p.parse_args()
     args.sementes = list(range(args.semente_inicial, args.semente_inicial + args.sementes))
     if args.agregar:
         manifestos = [json.load(open(os.path.join(d, 'manifesto.json'))) for d in args.agregar]
-        if len({m['passos_cql'] for m in manifestos}) > 1:
+        # rodadas sem CQL (ex.: só baselines extras) podem se juntar a rodadas com CQL
+        if len({m['passos_cql'] for m in manifestos if m.get('cql_incluido', True)}) > 1:
             raise SystemExit('rodadas com passos_cql diferentes')
+        manifestos = sorted(manifestos, key=lambda m: not m.get('cql_incluido', True))
         por_semente = pd.concat([pd.read_csv(os.path.join(d, 'por_semente.csv')) for d in args.agregar],
                                 ignore_index=True)
         if por_semente.duplicated(['modelo', 'politica', 'semente', 'tier']).any():
@@ -240,7 +259,10 @@ def main():
     with open(os.path.join(args.saida, 'manifesto.json'), 'w') as f:
         json.dump({'simulador_versao': sim.VERSAO, 'sementes': args.sementes,
                    'n_por_cenario': args.n_por_cenario, 'passos_cql': None if args.sem_cql else args.passos_cql,
-                   'cql_incluido': not args.sem_cql, 'n_estados_avaliacao': int(len(sim.contextos(carregar_cenarios()))),
+                   'cenarios': args.cenarios or 'padrao', 'fracao_dados': args.fracao_dados,
+                   'politicas': args.politicas,
+                   'cql_incluido': not args.sem_cql, 'n_estados_avaliacao': int(len(sim.contextos(
+                       cs.conjunto(args.cenarios) if args.cenarios else carregar_cenarios()))),
                    'gerado_em': datetime.now(timezone.utc).isoformat(timespec='seconds')}, f, indent=2)
 
     with pd.option_context('display.float_format', '{:,.1f}'.format, 'display.width', 140):

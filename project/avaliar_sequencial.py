@@ -35,11 +35,14 @@ import pandas as pd
 
 import avaliar_politicas as av
 import bandido as ban
+import cenarios_sensibilidade as cs
 import politicas as pol
 import sequencial as sq
 
 COMPARACOES = [('cql_g095', 'cql_g0'), ('cql_g095', 'bandido'), ('cql_g095', 'oraculo_miope'),
-               ('bandido', 'aleatorio'), ('cql_g0', 'bandido')]
+               ('bandido', 'aleatorio'), ('cql_g0', 'bandido'),
+               ('iql_g095', 'cql_g095'), ('iql_g095', 'bandido'), ('iql_g095', 'cql_g0')]
+OPCIONAIS = ('iql_g095',)  # só com --politicas
 TIERS = ['Low Ticket', 'High Ticket', 'Todos']
 
 
@@ -58,8 +61,13 @@ def construir(modelo, cenarios, args, avaliador):
             # episódio, então não muda a política ótima; evita a escala de centenas a milhões
             pols[nome] = pol.CQL(modelo, cenarios, n_passos=args.passos_cql, gamma=gamma, extras=ex,
                                  escala_recompensa='estado', avaliador=avaliador)
+    if not args.sem_cql and 'iql_g095' in (args.politicas or ()):
+        pols['iql_g095'] = pol.IQL(modelo, cenarios, n_passos=args.passos_cql, gamma=0.95, extras=ex,
+                                   escala_recompensa='estado', avaliador=avaliador)
     pols['oraculo_miope'] = sq.OraculoMiope(cenarios, modelo)
     pols['oraculo_pd'] = sq.OraculoPD(cenarios, modelo)
+    if args.politicas:  # só as pedidas, sem treinar as outras (oráculos sempre)
+        pols = {n: p for n, p in pols.items() if n in args.politicas or n.startswith('oraculo')}
     return pols
 
 
@@ -119,7 +127,9 @@ def resumir(det, saida):
         for a, b in COMPARACOES:
             if a in piv and b in piv:
                 for tier in TIERS:
-                    g = piv.xs(tier, level='tier')
+                    g = piv.xs(tier, level='tier')[[a, b]].dropna()
+                    if len(g) < 2:
+                        continue
                     m, lo, hi = av.ic95(g[a] - g[b])
                     comp.append({'modelo': modelo, 'tier': tier, 'comparacao': f'{a} - {b}',
                                  'n_sementes': len(g), 'diferenca_pp': m, 'ic95_inf': lo, 'ic95_sup': hi,
@@ -143,8 +153,16 @@ def main():
     ap.add_argument('--agregar', nargs='+', metavar='PASTA',
                     help='só junta por_semente.csv/trajetorias.csv de rodadas anteriores')
     ap.add_argument('--saida', default='resultados/sequencial')
+    ap.add_argument('--cenarios', choices=cs.CONJUNTOS, help='conjunto de cenários (cenarios_sensibilidade.py)')
+    ap.add_argument('--kappa', type=float, help=f'κ (padrão {sq.KAPPA})')
+    ap.add_argument('--lambda', dest='lam', type=float, help=f'λ (padrão {sq.LAMBDA})')
+    ap.add_argument('--politicas', nargs='+', help=f'só estas políticas; opcionais: {OPCIONAIS}')
     args = ap.parse_args()
     os.makedirs(args.saida, exist_ok=True)
+    if args.kappa is not None:
+        sq.KAPPA = args.kappa
+    if args.lam is not None:
+        sq.LAMBDA = args.lam
 
     if args.agregar:
         det = pd.concat([pd.read_csv(os.path.join(d, 'por_semente.csv')) for d in args.agregar], ignore_index=True)
@@ -159,12 +177,13 @@ def main():
         det.to_csv(os.path.join(args.saida, 'por_semente.csv'), index=False)
         traj.to_csv(os.path.join(args.saida, 'trajetorias.csv'), index=False)
     else:
-        det, traj = rodar(args, av.carregar_cenarios())
+        det, traj = rodar(args, cs.conjunto(args.cenarios) if args.cenarios else av.carregar_cenarios())
         passos = None if args.sem_cql else args.passos_cql
 
     resumir(det, args.saida)
     with open(os.path.join(args.saida, 'manifesto.json'), 'w') as f:
-        json.dump({'T': sq.T, 'kappa': sq.KAPPA, 'lambda': sq.LAMBDA,
+        json.dump({'T': sq.T, 'kappa': sq.KAPPA, 'lambda': sq.LAMBDA, 'cenarios': args.cenarios or 'padrao',
+                   'politicas': args.politicas,
                    'modelos': sorted(det['modelo'].unique().tolist()),
                    'sementes': sorted(int(x) for x in det['semente'].unique()),
                    'episodios_por_cenario': args.episodios, 'passos_cql': passos}, f, indent=2)

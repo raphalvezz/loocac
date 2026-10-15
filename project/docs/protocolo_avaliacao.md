@@ -639,6 +639,35 @@ treina o SL e calcula o SHAP em 2.000 linhas do teste, como o `SL_FINAL`.
   não mede o que decide o **preço** dentro de um estado (para isso, a curva de lucro
   por preço do próprio SL é a explicação adequada).
 
+## 9h. Robustez e baselines adicionais (registrado em 2026-10-15, antes de rodar)
+
+Análises exploratórias de sensibilidade (não substituem a comparação principal nem
+o sequencial de 10 sementes). Para caber no tempo de CPU, as de sensibilidade usam
+**3 sementes (42–44) e CQL com 20.000 passos** (na rodada preliminar do sequencial,
+20.000 passos deram 83,8% contra 84,5% com 50.000, com as mesmas conclusões).
+O critério é qualitativo: a conclusão se mantém se o sinal de `cql − bandido`
+(estático) e de S1/S2 (sequencial) for o mesmo das rodadas principais, com IC 95%
+do mesmo lado de zero.
+
+1. **Número de contextos** (`cenarios_sensibilidade.py`): conjunto reduzido (5
+   cenários, 60 contextos) e ampliado (36 cenários, 432 contextos; variantes dos 12
+   originais com orçamento × 1,7 / × 0,6 e faixa × 1,2 / × 0,8). Estático com
+   aleatório, meio da faixa, bandido e CQL; sequencial com bandido, CQL γ = 0 e
+   γ = 0,95. 5.000 linhas (estático) ou 200 campanhas (sequencial) por cenário.
+2. **κ e λ** (uma variável por vez): κ = 0,105 e 0,195 (±30%) com λ = 0,85; λ = 0,75
+   e 0,95 com κ = 0,15 (±30% em λ passaria de 1, o que tiraria o conflito entre hoje
+   e amanhã). Sequencial com bandido, CQL γ = 0 e γ = 0,95; S1 e S2 por combinação.
+3. **Curva de aprendizado**: 10%, 25%, 50% e 100% do dataset logado (6.000 a 60.000
+   linhas) no problema estático, com aleatório, meio da faixa, SL, bandido e CQL.
+   Mede a partir de que volume o desempenho estabiliza.
+4. **Bandido clássico sem ML** (`bandido.BandidoTabular`): UCB1 e Thompson sampling
+   gaussiano numa tabela por estado observável com 10 braços de preço. Entra na
+   comparação principal como baseline adicional, nas 10 sementes (42–51).
+5. **IQL contra CQL** (`politicas.IQL`): no sequencial com γ = 0,95, o mesmo
+   protocolo do `cql_g095` (50.000 passos, mesma seleção de checkpoint), sementes
+   42–46, pareado com o `cql_g095` das mesmas sementes. Hiperparâmetros do artigo
+   original do IQL (expectil 0,7, temperatura 3), sem ajuste.
+
 ## 10. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),

@@ -414,21 +414,24 @@ class CQL(AgenteD3):
         pol.prep = PreprocessadorEstado(modelo, ohe, scaler_estado, scaler_memoria)
         return pol
 
-    def treinar(self, dados, semente):
-        import d3rlpy
+    def _config(self):
         from d3rlpy.algos import CQLConfig
         from d3rlpy.models import QRQFunctionFactory
+        return CQLConfig(
+            batch_size=256, gamma=self.gamma,
+            observation_scaler=None, action_scaler=None, reward_scaler=None,
+            alpha_learning_rate=1e-4, actor_learning_rate=1e-4, critic_learning_rate=3e-4,
+            conservative_weight=self.peso_conservador, q_func_factory=QRQFunctionFactory(n_quantiles=64),
+        )
+
+    def treinar(self, dados, semente):
+        import d3rlpy
 
         d3rlpy.seed(semente)
         treino = dados.iloc[: int(len(dados) * FRACAO_TREINO)]
         buffer = self._buffer(treino, self._recompensas(treino))
 
-        self.algo = CQLConfig(
-            batch_size=256, gamma=self.gamma,
-            observation_scaler=None, action_scaler=None, reward_scaler=None,
-            alpha_learning_rate=1e-4, actor_learning_rate=1e-4, critic_learning_rate=3e-4,
-            conservative_weight=self.peso_conservador, q_func_factory=QRQFunctionFactory(n_quantiles=64),
-        ).create(device='cuda:0' if _cuda() else 'cpu')
+        self.algo = self._config().create(device='cuda:0' if _cuda() else 'cpu')
 
         melhor, sem_melhora = -np.inf, 0
         with tempfile.TemporaryDirectory() as tmp:
@@ -492,6 +495,32 @@ class CQL(AgenteD3):
         var = np.quantile(q, alfa, axis=1)
         cvar = np.array([linha[linha <= v].mean() for linha, v in zip(q, var)])
         return var, cvar
+
+
+class IQL(CQL):
+    """Implicit Q-Learning (d3rlpy), alternativa ao CQL como RL offline.
+
+    Em vez de penalizar ações fora dos dados (termo conservador do CQL), o IQL nunca
+    consulta Q em ações não logadas: aprende V(s) como um expectil alto de Q(s, a)
+    sobre as ações dos dados e extrai a política por regressão ponderada pela
+    vantagem. Mesmo estado, ação, recompensa, γ e seleção de checkpoint do CQL;
+    hiperparâmetros do artigo original (expectil 0,7, temperatura 3). Sem crítico
+    quantílico: não tem quantis_reais/risco.
+    """
+    nome = 'iql'
+
+    def __init__(self, modelo, cenarios, expectil=0.7, temperatura=3.0, **kw):
+        super().__init__(modelo, cenarios, **kw)
+        self.expectil, self.temperatura = expectil, temperatura
+
+    def _config(self):
+        from d3rlpy.algos import IQLConfig
+        return IQLConfig(batch_size=256, gamma=self.gamma, observation_scaler=None, action_scaler=None,
+                         reward_scaler=None, actor_learning_rate=3e-4, critic_learning_rate=3e-4,
+                         expectile=self.expectil, weight_temp=self.temperatura, max_weight=100.0)
+
+    def quantis(self, estados, precos):
+        raise NotImplementedError('IQL não tem crítico quantílico')
 
 
 class BC(AgenteD3):
