@@ -29,9 +29,10 @@ import pandas as pd
 import simulador as sim
 
 T = 12                    # períodos por campanha
-# Calibração (escolhida antes de treinar qualquer política): com κ = 0,15 e λ = 0,85
-# o oráculo míope obtém ~90% do ótimo, ou seja, planejar vale ~10 p.p.; κ = 0,5
-# deixava o míope em 55% e a PD presa no preço mínimo (dinâmica exagerada).
+# Calibração por inspeção, antes de treinar qualquer política: com κ = 0,15 e λ = 0,85
+# o oráculo míope obtém ~90% do ótimo (venda única), ou seja, planejar vale ~10 p.p.;
+# κ = 0,5 deixava o míope em 55% (efeito dominante). Grade completa e uma correção do
+# registro anterior em calibracao_sequencial.py e no protocolo, seção 9f.
 KAPPA = 0.15              # velocidade de ajuste da reputação
 LAMBDA = 0.85             # preço justo = 85% do preço míope ótimo
 RHO_MIN, RHO_MAX, RHO_0 = 0.5, 1.5, 1.0

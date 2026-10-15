@@ -30,7 +30,8 @@ problema de passo único consegue separar os métodos.
 A vantagem clara do RL (CQL γ = 0,95 sobre o bandido: +8,8 p.p. na venda única e
 +13,9 p.p. na assinatura, 10 sementes) aparece só no ambiente sequencial, em que o preço muda a
 reputação e a demanda futura. A intensidade desse efeito (κ = 0,15, λ = 0,85) foi
-calibrada, não medida. O produto serve a decisão de passo único; a rota experimental
+calibrada por inspeção, não medida (duas configurações testadas, sem busca
+sistemática; grade de sensibilidade na seção 9f do protocolo). O produto serve a decisão de passo único; a rota experimental
 `/recomendar_sequencial` serve o agente sequencial com estado persistido por cliente,
 mas a reputação que ela acompanha é a do Gêmeo Digital, não uma medida real
 (`docs/escopo_produto.md`).
@@ -84,6 +85,27 @@ percentil 99 das reputações logadas (`resultados/ood/`, seção 9e do protocol
 desempenho continua alto porque, no simulador, a demanda responde de forma suave à
 reputação; num mercado real, a resposta a uma reputação nunca observada é exatamente
 o que os dados não informam.
+
+## 6c. Contextos independentes
+
+O simulador trata cada contexto (cenário × região × plataforma) como um mundo
+separado. Cada linha dos dados é sorteada de forma independente (cenário, região,
+plataforma, preço e ruído), o lucro de um contexto não depende de nenhum outro e a
+avaliação faz a média simples dos 144 contextos, com o mesmo peso para todos. Ficam
+de fora: orçamento compartilhado entre campanhas, concorrência e canibalização entre
+plataformas ou regiões da mesma marca, sazonalidade e efeitos de uma campanha sobre
+outra. No ambiente sequencial, a reputação evolui em cada contexto sem transbordar
+para os demais (uma campanha cara no Instagram não afeta a reputação no LinkedIn).
+Com interdependência, a decisão ótima passaria a ser conjunta e o problema seria
+maior que o estudado.
+
+## 6d. Escala monetária
+
+O simulador não foi calibrado em dinheiro: os lucros absolutos são irreais (uma
+campanha High Ticket de assinatura com orçamento de US$ 61 mil tem lucro ótimo de
+US$ 412 milhões). Só as razões entre políticas (% do ótimo) têm significado; o
+exemplo de retorno em `docs/roi_ilustrativo.md` parte de uma empresa hipotética por
+esse motivo.
 
 ## 7. Segurança
 

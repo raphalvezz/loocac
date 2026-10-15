@@ -1,0 +1,191 @@
+modelo,semente,coluna,variavel,media_abs_shap
+venda_unica,42,Regiao_Asia,Regiao,2925.3980209208944
+venda_unica,42,Regiao_Europe,Regiao,23037.894544648112
+venda_unica,42,Regiao_North America,Regiao,47937.20854895819
+venda_unica,42,Regiao_South America,Regiao,2578.033985825248
+venda_unica,42,Plataforma_Facebook,Plataforma,17234.315377782514
+venda_unica,42,Plataforma_Instagram,Plataforma,1075.9521119256124
+venda_unica,42,Plataforma_LinkedIn,Plataforma,35586.85338819954
+venda_unica,42,Tier_High Ticket,Tier,17687.320935344153
+venda_unica,42,Tier_Low Ticket,Tier,1172.9537359922529
+venda_unica,42,Idade_25-34,Idade,0.0
+venda_unica,42,Genero_Female,Genero,0.0
+venda_unica,42,Conteudo_Video,Conteudo,0.0
+venda_unica,42,Tipo_Produto_InfoProduto,Tipo_Produto,0.0
+venda_unica,42,Modelo_Cobranca_Venda Unica,Modelo_Cobranca,0.0
+venda_unica,42,Complexidade_Oferta_Media,Complexidade_Oferta,0.0
+venda_unica,42,Orcamento,Orcamento,386943.8534585519
+venda_unica,42,Preco,Preco,204332.13226472048
+assinatura,42,Regiao_Asia,Regiao,122795.64900652849
+assinatura,42,Regiao_Europe,Regiao,457908.07249812083
+assinatura,42,Regiao_North America,Regiao,900488.7737630112
+assinatura,42,Regiao_South America,Regiao,145113.85184752167
+assinatura,42,Plataforma_Facebook,Plataforma,390143.02970408334
+assinatura,42,Plataforma_Instagram,Plataforma,28096.27726010126
+assinatura,42,Plataforma_LinkedIn,Plataforma,748419.4446852598
+assinatura,42,Tier_High Ticket,Tier,541057.9642615768
+assinatura,42,Tier_Low Ticket,Tier,0.0
+assinatura,42,Idade_25-34,Idade,0.0
+assinatura,42,Genero_Female,Genero,0.0
+assinatura,42,Conteudo_Video,Conteudo,0.0
+assinatura,42,Tipo_Produto_InfoProduto,Tipo_Produto,0.0
+assinatura,42,Modelo_Cobranca_Venda Unica,Modelo_Cobranca,0.0
+assinatura,42,Complexidade_Oferta_Media,Complexidade_Oferta,0.0
+assinatura,42,Orcamento,Orcamento,14749530.311277514
+assinatura,42,dias_desde_ultima_interacao,dias_desde_ultima_interacao,0.0
+assinatura,42,clv_estimate_percentile,clv_estimate_percentile,0.0
+assinatura,42,avg_price_offered_segment_90d,avg_price_offered_segment_90d,3078816.0283920597
+assinatura,42,price_volatility_30d,price_volatility_30d,0.0
+assinatura,42,Preco,Preco,2391135.836059277
+venda_unica,43,Regiao_Asia,Regiao,3387.958158846024
+venda_unica,43,Regiao_Europe,Regiao,22695.944820089106
+venda_unica,43,Regiao_North America,Regiao,54019.27722879953
+venda_unica,43,Regiao_South America,Regiao,3745.2278821014147
+venda_unica,43,Plataforma_Facebook,Plataforma,21403.463127387033
+venda_unica,43,Plataforma_Instagram,Plataforma,2231.7080567040375
+venda_unica,43,Plataforma_LinkedIn,Plataforma,37439.97542233623
+venda_unica,43,Tier_High Ticket,Tier,20619.186616515348
+venda_unica,43,Tier_Low Ticket,Tier,1379.5413703681452
+venda_unica,43,Idade_25-34,Idade,0.0
+venda_unica,43,Genero_Female,Genero,0.0
+venda_unica,43,Conteudo_Video,Conteudo,0.0
+venda_unica,43,Tipo_Produto_InfoProduto,Tipo_Produto,0.0
+venda_unica,43,Modelo_Cobranca_Venda Unica,Modelo_Cobranca,0.0
+venda_unica,43,Complexidade_Oferta_Media,Complexidade_Oferta,0.0
+venda_unica,43,Orcamento,Orcamento,378958.9407443157
+venda_unica,43,Preco,Preco,241467.99256347874
+assinatura,43,Regiao_Asia,Regiao,164736.27658214857
+assinatura,43,Regiao_Europe,Regiao,437904.58732375613
+assinatura,43,Regiao_North America,Regiao,1037172.44231545
+assinatura,43,Regiao_South America,Regiao,162919.65307457218
+assinatura,43,Plataforma_Facebook,Plataforma,419463.084891028
+assinatura,43,Plataforma_Instagram,Plataforma,38132.29395182029
+assinatura,43,Plataforma_LinkedIn,Plataforma,713913.5710709306
+assinatura,43,Tier_High Ticket,Tier,458492.3495900677
+assinatura,43,Tier_Low Ticket,Tier,29679.83453088958
+assinatura,43,Idade_25-34,Idade,0.0
+assinatura,43,Genero_Female,Genero,0.0
+assinatura,43,Conteudo_Video,Conteudo,0.0
+assinatura,43,Tipo_Produto_InfoProduto,Tipo_Produto,0.0
+assinatura,43,Modelo_Cobranca_Venda Unica,Modelo_Cobranca,0.0
+assinatura,43,Complexidade_Oferta_Media,Complexidade_Oferta,0.0
+assinatura,43,Orcamento,Orcamento,16342198.008918965
+assinatura,43,dias_desde_ultima_interacao,dias_desde_ultima_interacao,0.0
+assinatura,43,clv_estimate_percentile,clv_estimate_percentile,0.0
+assinatura,43,avg_price_offered_segment_90d,avg_price_offered_segment_90d,3160449.8393594916
+assinatura,43,price_volatility_30d,price_volatility_30d,0.0
+assinatura,43,Preco,Preco,1951912.7918947963
+venda_unica,44,Regiao_Asia,Regiao,2355.1663232835963
+venda_unica,44,Regiao_Europe,Regiao,22787.650600242257
+venda_unica,44,Regiao_North America,Regiao,57694.9718916881
+venda_unica,44,Regiao_South America,Regiao,2592.261017911197
+venda_unica,44,Plataforma_Facebook,Plataforma,19007.339531915502
+venda_unica,44,Plataforma_Instagram,Plataforma,1798.9270354150299
+venda_unica,44,Plataforma_LinkedIn,Plataforma,39061.72769523154
+venda_unica,44,Tier_High Ticket,Tier,15453.880287314376
+venda_unica,44,Tier_Low Ticket,Tier,3405.19911172506
+venda_unica,44,Idade_25-34,Idade,0.0
+venda_unica,44,Genero_Female,Genero,0.0
+venda_unica,44,Conteudo_Video,Conteudo,0.0
+venda_unica,44,Tipo_Produto_InfoProduto,Tipo_Produto,0.0
+venda_unica,44,Modelo_Cobranca_Venda Unica,Modelo_Cobranca,0.0
+venda_unica,44,Complexidade_Oferta_Media,Complexidade_Oferta,0.0
+venda_unica,44,Orcamento,Orcamento,445833.9474157691
+venda_unica,44,Preco,Preco,179617.7433417821
+assinatura,44,Regiao_Asia,Regiao,121696.61788648454
+assinatura,44,Regiao_Europe,Regiao,465230.1022659834
+assinatura,44,Regiao_North America,Regiao,1080401.0321810313
+assinatura,44,Regiao_South America,Regiao,112454.12819210699
+assinatura,44,Plataforma_Facebook,Plataforma,374569.0754280207
+assinatura,44,Plataforma_Instagram,Plataforma,35835.88531042703
+assinatura,44,Plataforma_LinkedIn,Plataforma,778551.015676732
+assinatura,44,Tier_High Ticket,Tier,406004.1876751206
+assinatura,44,Tier_Low Ticket,Tier,27116.53252372027
+assinatura,44,Idade_25-34,Idade,0.0
+assinatura,44,Genero_Female,Genero,0.0
+assinatura,44,Conteudo_Video,Conteudo,0.0
+assinatura,44,Tipo_Produto_InfoProduto,Tipo_Produto,0.0
+assinatura,44,Modelo_Cobranca_Venda Unica,Modelo_Cobranca,0.0
+assinatura,44,Complexidade_Oferta_Media,Complexidade_Oferta,0.0
+assinatura,44,Orcamento,Orcamento,15439311.050931105
+assinatura,44,dias_desde_ultima_interacao,dias_desde_ultima_interacao,0.0
+assinatura,44,clv_estimate_percentile,clv_estimate_percentile,0.0
+assinatura,44,avg_price_offered_segment_90d,avg_price_offered_segment_90d,2849064.8060605717
+assinatura,44,price_volatility_30d,price_volatility_30d,0.0
+assinatura,44,Preco,Preco,2559492.0124886814
+venda_unica,45,Regiao_Asia,Regiao,4037.7434035565866
+venda_unica,45,Regiao_Europe,Regiao,20790.72685206356
+venda_unica,45,Regiao_North America,Regiao,55609.98988787701
+venda_unica,45,Regiao_South America,Regiao,4222.123098894417
+venda_unica,45,Plataforma_Facebook,Plataforma,21106.30245156826
+venda_unica,45,Plataforma_Instagram,Plataforma,3108.9194678012814
+venda_unica,45,Plataforma_LinkedIn,Plataforma,36654.44033730493
+venda_unica,45,Tier_High Ticket,Tier,14410.604948411104
+venda_unica,45,Tier_Low Ticket,Tier,3484.5129458425195
+venda_unica,45,Idade_25-34,Idade,0.0
+venda_unica,45,Genero_Female,Genero,0.0
+venda_unica,45,Conteudo_Video,Conteudo,0.0
+venda_unica,45,Tipo_Produto_InfoProduto,Tipo_Produto,0.0
+venda_unica,45,Modelo_Cobranca_Venda Unica,Modelo_Cobranca,0.0
+venda_unica,45,Complexidade_Oferta_Media,Complexidade_Oferta,0.0
+venda_unica,45,Orcamento,Orcamento,395737.4917570044
+venda_unica,45,Preco,Preco,213785.95310363194
+assinatura,45,Regiao_Asia,Regiao,139958.06986436917
+assinatura,45,Regiao_Europe,Regiao,395536.34934129426
+assinatura,45,Regiao_North America,Regiao,1040451.4729805244
+assinatura,45,Regiao_South America,Regiao,144323.21308871094
+assinatura,45,Plataforma_Facebook,Plataforma,454564.2337897352
+assinatura,45,Plataforma_Instagram,Plataforma,75808.15071569126
+assinatura,45,Plataforma_LinkedIn,Plataforma,723410.1121738707
+assinatura,45,Tier_High Ticket,Tier,497251.7574090283
+assinatura,45,Tier_Low Ticket,Tier,0.0
+assinatura,45,Idade_25-34,Idade,0.0
+assinatura,45,Genero_Female,Genero,0.0
+assinatura,45,Conteudo_Video,Conteudo,0.0
+assinatura,45,Tipo_Produto_InfoProduto,Tipo_Produto,0.0
+assinatura,45,Modelo_Cobranca_Venda Unica,Modelo_Cobranca,0.0
+assinatura,45,Complexidade_Oferta_Media,Complexidade_Oferta,0.0
+assinatura,45,Orcamento,Orcamento,16172864.378638156
+assinatura,45,dias_desde_ultima_interacao,dias_desde_ultima_interacao,0.0
+assinatura,45,clv_estimate_percentile,clv_estimate_percentile,0.0
+assinatura,45,avg_price_offered_segment_90d,avg_price_offered_segment_90d,3000401.17689629
+assinatura,45,price_volatility_30d,price_volatility_30d,0.0
+assinatura,45,Preco,Preco,1883282.9608858663
+venda_unica,46,Regiao_Asia,Regiao,3239.085154688333
+venda_unica,46,Regiao_Europe,Regiao,21805.438218181498
+venda_unica,46,Regiao_North America,Regiao,52797.40408681308
+venda_unica,46,Regiao_South America,Regiao,4206.452145099249
+venda_unica,46,Plataforma_Facebook,Plataforma,20738.717836495143
+venda_unica,46,Plataforma_Instagram,Plataforma,2024.5168631352979
+venda_unica,46,Plataforma_LinkedIn,Plataforma,34799.65865336045
+venda_unica,46,Tier_High Ticket,Tier,20397.55751450655
+venda_unica,46,Tier_Low Ticket,Tier,0.0
+venda_unica,46,Idade_25-34,Idade,0.0
+venda_unica,46,Genero_Female,Genero,0.0
+venda_unica,46,Conteudo_Video,Conteudo,0.0
+venda_unica,46,Tipo_Produto_InfoProduto,Tipo_Produto,0.0
+venda_unica,46,Modelo_Cobranca_Venda Unica,Modelo_Cobranca,0.0
+venda_unica,46,Complexidade_Oferta_Media,Complexidade_Oferta,0.0
+venda_unica,46,Orcamento,Orcamento,412846.14930907334
+venda_unica,46,Preco,Preco,207965.2835971016
+assinatura,46,Regiao_Asia,Regiao,134638.95290016997
+assinatura,46,Regiao_Europe,Regiao,442169.61001919024
+assinatura,46,Regiao_North America,Regiao,959965.823922384
+assinatura,46,Regiao_South America,Regiao,124848.07511385558
+assinatura,46,Plataforma_Facebook,Plataforma,437337.24629835476
+assinatura,46,Plataforma_Instagram,Plataforma,45798.71028182766
+assinatura,46,Plataforma_LinkedIn,Plataforma,689192.6711054426
+assinatura,46,Tier_High Ticket,Tier,487621.00604150334
+assinatura,46,Tier_Low Ticket,Tier,0.0
+assinatura,46,Idade_25-34,Idade,0.0
+assinatura,46,Genero_Female,Genero,0.0
+assinatura,46,Conteudo_Video,Conteudo,0.0
+assinatura,46,Tipo_Produto_InfoProduto,Tipo_Produto,0.0
+assinatura,46,Modelo_Cobranca_Venda Unica,Modelo_Cobranca,0.0
+assinatura,46,Complexidade_Oferta_Media,Complexidade_Oferta,0.0
+assinatura,46,Orcamento,Orcamento,16327534.43839293
+assinatura,46,dias_desde_ultima_interacao,dias_desde_ultima_interacao,0.0
+assinatura,46,clv_estimate_percentile,clv_estimate_percentile,0.0
+assinatura,46,avg_price_offered_segment_90d,avg_price_offered_segment_90d,2843654.7014387767
+assinatura,46,price_volatility_30d,price_volatility_30d,0.0
+assinatura,46,Preco,Preco,2048954.9597227299

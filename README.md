@@ -102,6 +102,7 @@ Verificar a API em execução com os modelos treinados (uma chamada por método 
 cobrança): `LOCAC_API_KEY=... python verificar_api.py` (na pasta `project/`).
 Resultado em máquina limpa: [`project/docs/verificacao.md`](project/docs/verificacao.md).
 Limitações reunidas para a monografia: [`project/docs/limitacoes.md`](project/docs/limitacoes.md).
+Exemplo de retorno (hipotético): [`project/docs/roi_ilustrativo.md`](project/docs/roi_ilustrativo.md).
 
 ## Segurança
 

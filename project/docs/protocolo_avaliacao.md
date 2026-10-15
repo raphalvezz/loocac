@@ -25,6 +25,33 @@ são reportados.
 - Treino: primeiros 80% das linhas (embaralhadas). Os 20% restantes não são usados
   na avaliação, que é feita no simulador.
 
+### Política geradora dos dados (auditoria de 2026-10-15)
+
+Conferido no código: **uma única política de coleta**, sem mistura de políticas.
+`Generator_NEW.py` chama `simulador.gerar_dados(CENARIOS, 5000, SEED)`, e o mesmo
+gerador é usado por `avaliar_politicas.py` (uma semente por rodada). Cada linha é
+sorteada de forma independente:
+1. cenário: exatamente 5.000 linhas por cenário (12 cenários, 60.000 linhas);
+2. região e plataforma: uniformes e independentes (4 × 3 combinações);
+3. preço: **uniforme contínuo em [Price_Min, Price_Max] do cenário**, sem depender
+   de nada mais (nem de resultados anteriores: a coleta não aprende);
+4. lucro (venda única) e LTV (assinatura): duas amostras independentes do ruído
+   lognormal no mesmo preço; a mesma linha serve aos dois modelos de cobrança.
+
+Conferido nos dados (semente 42): posição relativa do preço na faixa com média
+0,498 e desvio 0,287 (uniforme: 0,5 e 0,289), nenhum preço fora da faixa.
+Propensão conhecida: μ(p | cenário) = 1 / (Price_Max − Price_Min), usada pelo WIS
+(seção 9d). No ambiente sequencial (`sequencial.gerar_dados`), a mesma política
+decide cada período de forma independente da reputação.
+
+O que o **BC** aprende disso: o BC treina nos primeiros 80% com perda quadrática na
+ação (escala [-1, 1] da faixa observável), então aprende a **ação média logada em
+cada estado**. Conferido: a ação do BC fica a 0,025, em média, da ação média logada
+na chave do estado. Nos estados que juntam dois cenários (venda única, Low Ticket),
+essa média mistura duas faixas de preço uniformes. O BC é, portanto, a referência
+"imitar a coleta", não a imitação de um especialista: ele só pode ser tão bom quanto
+o preço médio aleatório.
+
 ## 3. Grade de avaliação e métrica
 
 - Estados: cada cenário × região × plataforma = **144 estados** (`simulador.contextos`).
@@ -545,6 +572,73 @@ Ticket, orçamento 50 mil, Europe/Instagram) feita pela API dá 98,8% (venda ún
 98,1% (assinatura) do ótimo daquele contexto; o preço começa em 0,79× e 0,62× o
 preço míope e sobe ao longo da campanha; a 13ª chamada recebe 409.
 
+## 9f. Calibração de κ e λ (reconstituída em 2026-10-15)
+
+O histórico do git mostra que `sequencial.py` entrou com κ = 0,15 e λ = 0,85 no
+commit `017e404` (2026-10-10), antes de qualquer política ser treinada nesse
+ambiente. Não há registro de uma busca sistemática: a calibração foi **por inspeção
+e tentativa**, com duas configurações testadas (κ = 0,5 e depois κ = 0,15; o valor de
+λ da primeira tentativa não ficou registrado) e um único alvo: que planejar valesse
+cerca de 10 p.p. (oráculo míope perto de 90% do ótimo), um efeito intertemporal
+visível mas não dominante. Não houve dado real por trás dos valores.
+
+`calibracao_sequencial.py` (`resultados/calibracao_sequencial.csv`) mostra onde a
+escolha fica numa grade, sem treinar políticas:
+
+| κ | λ | míope, venda (%) | míope, assinatura (%) | períodos da PD no piso, venda / assin. (%) |
+|---|---|---|---|---|
+| 0,05 | 0,85 | 99,0 | 97,9 | 0 / 0 |
+| 0,10 | 0,85 | 95,7 | 91,1 | 0,5 / 28 |
+| **0,15** | **0,85** | **89,7** | **82,7** | **15 / 46** |
+| 0,15 | 0,75 / 0,95 | 85,0 / 92,8 | 76,7 / 86,9 | 23 / 53 e 8 / 39 |
+| 0,25 | 0,85 | 74,4 | 67,0 | 37 / 55 |
+| 0,50 | 0,85 | 54,6 | 50,7 | 32 / 37 |
+
+- O valor de planejar cresce com κ e cai com λ; com κ = 0,05 o efeito some (o míope
+  fica a 1–2 p.p. do ótimo) e não haveria o que o RL ganhar.
+- **Correção de um registro:** o comentário original dizia que κ = 0,5 deixava "a PD
+  presa no preço mínimo". A grade não sustenta isso como diferença entre as duas
+  configurações: com a calibração usada, a política ótima também começa no piso da
+  faixa em 94% (venda) e 100% (assinatura) dos contextos e passa 15% e 46% dos
+  períodos nele; com κ = 0,5, 32% e 37%. O que de fato separa as duas é o valor de
+  planejar (míope a 89,7% contra 54,6%). O comentário em `sequencial.py` foi
+  corrigido; os valores não mudaram.
+- Como a PD passa parte da campanha no piso, o preço mínimo da faixa é uma restrição
+  ativa do ótimo: o efeito intertemporal empurra o preço para baixo até onde a faixa
+  deixa. Isso vale para todas as políticas e não muda a comparação, mas faz parte da
+  hipótese do ambiente.
+
+## 9g. Estabilidade do SHAP do SL entre sementes (2026-10-15)
+
+`estabilidade_shap.py` (`resultados/shap/`): para as sementes 42–46, gera os dados,
+treina o SL e calcula o SHAP em 2.000 linhas do teste, como o `SL_FINAL`.
+
+| venda única | participação média na importância | CV entre sementes | posição (mín–máx) |
+|---|---|---|---|
+| Orçamento | 52% | 0,06 | 1–1 |
+| Preço | 27% | 0,11 | 2–2 |
+| Região | 11% | 0,02 | 3–3 |
+| Plataforma | 8% | 0,03 | 4–4 |
+| Tier | 2,5% | 0,08 | 5–5 |
+
+| assinatura | participação | CV | posição |
+|---|---|---|---|
+| Orçamento | 65% | 0,03 | 1–1 |
+| Preço médio ofertado (90 d) | 12% | 0,05 | 2–2 |
+| Preço | 9% | 0,15 | 3–3 |
+| Região | 7% | 0,03 | 4–4 |
+| Plataforma | 5% | 0,03 | 5–5 |
+| Tier | 2% | 0,09 | 6–6 |
+
+- A ordem das variáveis é idêntica nas 5 sementes (Kendall τ = 1,0 entre todos os
+  pares); por coluna do one-hot, τ médio de 0,91 (venda) e 0,96 (assinatura), com as
+  mesmas 3 colunas no topo em todas. A participação de cada variável varia de 2% a
+  15% (CV) entre sementes.
+- Leitura para a monografia: o SHAP explica o **nível** do lucro previsto, e o
+  orçamento domina porque separa cenários de escalas de lucro muito diferentes; ele
+  não mede o que decide o **preço** dentro de um estado (para isso, a curva de lucro
+  por preço do próprio SL é a explicação adequada).
+
 ## 10. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),
@@ -623,6 +717,8 @@ python avaliar_risco.py                  # calibração do VaR/CVaR; idem (com t
 python avaliar_selecao_ope.py --sementes 3   # FQE x WIS na escolha do checkpoint, ~6 h
 python avaliar_ood.py                    # suporte dos dados (com os modelos do pipeline), ~5 min
 python analise_estatistica.py            # Holm/Bonferroni, poder, distância ao ótimo (segundos)
+python calibracao_sequencial.py          # grade de κ e λ (só PD), ~10 min
+python estabilidade_shap.py              # SHAP do SL em 5 sementes, ~30 min
 
 # Análises complementares
 python avaliar_generalizacao.py           # regiões e cenários fora do treino, 1 semente, ~2 h
@@ -659,6 +755,8 @@ python avaliar_sequencial.py --agregar tmp/seq/* --saida resultados/sequencial
 | `avaliar_selecao_ope.py` | `selecao_ope/{checkpoints,resumo}.csv` | 9d |
 | `avaliar_ood.py` (precisa de `train_pipeline.py --sequencial`) | `ood/{resumo,estatico_por_estado,sequencial_por_passo}.csv` | 9e |
 | `analise_estatistica.py` | `estatistica/{testes,poder,distancia_oraculo}.csv` | 5, 6, 9b |
+| `calibracao_sequencial.py` | `calibracao_sequencial.csv` | 9f |
+| `estabilidade_shap.py` | `shap/{importancia_por_semente,estabilidade}.csv` | 9g |
 | `avaliar_generalizacao.py` | `generalizacao.csv`, `generalizacao_resumo.csv` | 7 |
 | `simular_bandido_online.py` + `figura_bandido_online.py` | `bandido_online_{120,1200}/`, `docs/figuras/bandido_online_*_iniciais.png` | 8 |
 | `ablacoes_cql.py`, `diagnostico_cql.py` | `ablacoes_cql*.csv`, `diagnostico_cql.csv` | 9 |
