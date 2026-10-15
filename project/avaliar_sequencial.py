@@ -19,7 +19,7 @@ Métrica: lucro total esperado da campanha (T períodos) como % do ótimo, por
 cobrança e por tier.
 
 Saídas: resultados/sequencial/{por_semente,tabela,tabela_legivel,comparacoes,trajetorias}.csv
-Uso:    python avaliar_sequencial.py [--sementes 5] [--passos-cql 50000] [--modelos venda_unica assinatura]
+Uso:    python avaliar_sequencial.py [--sementes 10] [--passos-cql 50000] [--modelos venda_unica assinatura]
         # em paralelo: uma semente por processo e depois juntar
         python avaliar_sequencial.py --semente-inicial 44 --sementes 1 --saida tmp/s44
         python avaliar_sequencial.py --agregar tmp/s42 tmp/s43 ... --saida resultados/sequencial
@@ -134,7 +134,7 @@ def resumir(det, saida):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('--sementes', type=int, default=5)
+    ap.add_argument('--sementes', type=int, default=10)
     ap.add_argument('--semente-inicial', type=int, default=42)
     ap.add_argument('--modelos', nargs='+', default=list(sq.MODELOS), choices=sq.MODELOS)
     ap.add_argument('--episodios', type=int, default=200, help='campanhas logadas por cenário (múltiplo de 5)')

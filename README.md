@@ -78,7 +78,7 @@ curl -X POST "http://127.0.0.1:8000/comparar?cobranca=venda_unica" \
 
 ```bash
 cd project
-python avaliar_politicas.py --saida resultados/final_5_sementes   # comparação principal
+python avaliar_politicas.py --saida resultados/final_10_sementes  # comparação principal, 10 sementes
 python avaliar_sequencial.py && python figura_sequencial.py         # ambiente sequencial
 python avaliar_robustez.py && python avaliar_deslocamento.py && python avaliar_fqe.py
 ```

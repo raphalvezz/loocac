@@ -8,7 +8,7 @@ Os textos entre aspas podem ser adaptados diretamente.
 O estado da venda única (Tier, orçamento, região, plataforma) não distingue os
 cenários 3/4 e 5/6, que têm faixas de preço diferentes. Nenhuma política que vê só
 o estado passa do teto `oraculo_obs`: 88,9% do ótimo no total e 77,7% no Low Ticket
-(`resultados/final_5_sementes/`). Incluir um preço de referência do produto no
+(`resultados/final_10_sementes/`). Incluir um preço de referência do produto no
 estado resolveria, mas mudaria o simulador, a API e a tela depois das rodadas
 finais (decisão em `protocolo_avaliacao.md`, seção 11).
 
@@ -27,8 +27,8 @@ problema de passo único consegue separar os métodos.
 
 ## 3. O efeito intertemporal é uma hipótese de simulação
 
-A vantagem clara do RL (CQL γ = 0,95 sobre o bandido: +9,0 p.p. na venda única e
-+13,9 p.p. na assinatura) aparece só no ambiente sequencial, em que o preço muda a
+A vantagem clara do RL (CQL γ = 0,95 sobre o bandido: +8,8 p.p. na venda única e
++13,9 p.p. na assinatura, 10 sementes) aparece só no ambiente sequencial, em que o preço muda a
 reputação e a demanda futura. A intensidade desse efeito (κ = 0,15, λ = 0,85) foi
 calibrada, não medida. O produto serve a decisão de passo único; a rota experimental
 `/recomendar_sequencial` serve o agente sequencial com estado persistido por cliente,

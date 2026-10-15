@@ -24,7 +24,7 @@ medida real. Os motivos abaixo explicam por que ela não substitui `/recomendar`
    RL se justifica, não que o mercado real tenha esse efeito.
 3. **No problema de passo único o CQL não tem vantagem decisiva.** Na comparação
    principal ele empata com o bandido contextual (assinatura) ou o supera por
-   pouco (venda única, +2,3 p.p.). Servir o CQL como método padrão (`metodo=rl`)
+   pouco (venda única, +2,2 p.p.). Servir o CQL como método padrão (`metodo=rl`)
    é coerente com esses resultados, mas a API também oferece `sl`, `bandido` e
    `bc` para comparação lado a lado.
 
@@ -33,11 +33,11 @@ medida real. Os motivos abaixo explicam por que ela não substitui `/recomendar`
 > O protótipo serve a decisão de preço de passo único: para cada estado da
 > campanha, a API recomenda um preço com o método escolhido (CQL, bandido
 > contextual, SL ou BC). Nesse problema, o CQL ficou empatado com o bandido
-> contextual na assinatura e 2,3 p.p. acima dele na venda única (5 sementes).
+> contextual na assinatura e 2,2 p.p. acima dele na venda única (10 sementes).
 > A vantagem clara do RL apareceu apenas no ambiente sequencial, em que o preço
 > de hoje altera a reputação e a demanda futura: com γ = 0,95, o CQL superou o
-> bandido em 9,0 p.p. (venda única) e 13,9 p.p. (assinatura) e a sua própria versão
-> míope (γ = 0) em 6,4 e 11,6 p.p. (5 sementes, IC 95% acima de zero; seção 5.x). Esse ambiente não foi
+> bandido em 8,8 p.p. (venda única) e 13,9 p.p. (assinatura) e a sua própria versão
+> míope (γ = 0) em 6,1 e 11,6 p.p. (10 sementes, IC 95% acima de zero; seção 5.x). Esse ambiente não foi
 > integrado ao produto porque o sistema não observa a reputação da marca e
 > porque a intensidade do efeito intertemporal (κ, λ) é uma hipótese de
 > simulação. O resultado deve ser lido como um critério de decisão: o RL offline
@@ -48,7 +48,7 @@ medida real. Os motivos abaixo explicam por que ela não substitui `/recomendar`
 > CPU) e maior explicabilidade.
 
 Os números de referência estão em `docs/protocolo_avaliacao.md` (seção 6 e 9b) e
-em `resultados/final_5_sementes/` e `resultados/sequencial/`.
+em `resultados/final_10_sementes/` e `resultados/sequencial/`.
 
 ## Rota experimental (opção b, implementada em 2026-10-14)
 

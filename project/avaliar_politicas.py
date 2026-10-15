@@ -43,7 +43,7 @@ TIERS = ['Low Ticket', 'High Ticket', 'Todos']
 # Políticas comparadas (as variantes do bandido em operação estão em simular_bandido_online.py)
 TODAS = [pol.Aleatoria, pol.MeioFaixa, pol.MaximoFaixa, pol.SL, ban.BandidoLGBM, pol.BC, pol.CQL,
          pol.OraculoObservavel, pol.Oraculo]
-SEMENTES_PADRAO = [42, 43, 44, 45, 46]
+SEMENTES_PADRAO = list(range(42, 52))  # 10 sementes (protocolo, seção 5b)
 # Comparações pareadas fixadas no protocolo (A - B)
 COMPARACOES = [('cql', 'aleatorio'), ('cql', 'meio_faixa'), ('cql', 'sl'), ('cql', 'bandido'), ('cql', 'bc'),
                ('sl', 'aleatorio'), ('sl', 'meio_faixa'),

@@ -107,7 +107,8 @@ suficiente neste problema. É um resultado válido e deve ser reportado como tal
 
 ### Resultado final (2026-10-11, 5 sementes, CQL com 50.000 passos)
 
-Referência para o capítulo 5: `resultados/final_5_sementes/`. % do ótimo:
+Rodada de 5 sementes; a referência para o capítulo 5 passou a ser a de 10 sementes
+(abaixo, `resultados/final_10_sementes/`). % do ótimo:
 
 | política | venda Low | venda High | venda Todos | assin. Low | assin. High | assin. Todos |
 |---|---|---|---|---|---|---|
@@ -269,6 +270,30 @@ Comparações pareadas (p.p., IC 95%):
 - Os limites da rodada preliminar continuam valendo (checkpoint escolhido pelo
   simulador; κ e λ são hipóteses). A rodada preliminar está em
   `resultados/sequencial_preliminar/`.
+
+### Resultado com 10 sementes (2026-10-15, sementes 42–51, `resultados/sequencial/`)
+
+A pasta `resultados/sequencial/` passa a ter as 10 sementes (a versão de 5 sementes
+está no histórico do git, commit `2e55bdf`). % do ótimo da programação dinâmica:
+
+| política | venda Low | venda High | venda Todos | assin. Low | assin. High | assin. Todos |
+|---|---|---|---|---|---|---|
+| sl | 63,2 | 83,1 | 73,1 | 93,5 | 85,6 | 89,5 |
+| bandido | 60,9 | 90,0 | 75,4 | 84,4 | 84,4 | 84,4 |
+| bc | 64,2 | 87,0 | 75,6 | 81,3 | 81,4 | 81,3 |
+| cql_g0 | 64,9 | 91,4 | 78,1 | 86,8 | 86,5 | 86,7 |
+| **cql_g095** | **71,2** | **97,3** | **84,2** | **98,4** | **98,1** | **98,3** |
+| oraculo_miope | 90,5 | 89,0 | 89,7 | 82,8 | 82,5 | 82,7 |
+
+| | venda única | assinatura |
+|---|---|---|
+| **S1** `cql_g095 − bandido` | +8,8 (7,9 a 9,7) | +13,9 (13,3 a 14,5) |
+| **S2** `cql_g095 − cql_g0` | +6,1 (5,1 a 7,1) | +11,6 (11,3 a 12,0) |
+
+S1 e S2 continuam confirmados nas duas cobranças, no total e em cada tier (todos os
+limites inferiores acima de zero; o menor é +3,9 p.p., S2 na venda única, Low
+Ticket). Os números mudam menos de 0,5 p.p. em relação às 5 sementes. **Nenhuma
+conclusão muda.**
 
 ### Resultado preliminar do ambiente sequencial (2026-10-10, venda única, 3 sementes, 20.000 passos)
 
@@ -484,10 +509,10 @@ python -m pytest tests                   # simulador v1.0, sequencial e API (~1 
 python train_pipeline.py                 # ~4 h 30 (dois CQL de 50 mil passos)
 
 # Comparação principal (seção 6)
-python avaliar_politicas.py --saida resultados/final_5_sementes   # 5 sementes, ~12 h
+python avaliar_politicas.py --saida resultados/final_10_sementes  # 10 sementes, ~24 h em série
 
 # Testes de ambiente (seção 9b)
-python avaliar_sequencial.py             # 5 sementes x 2 cobranças, ~20 h em série
+python avaliar_sequencial.py             # 10 sementes x 2 cobranças, ~40 h em série
 python figura_sequencial.py
 python avaliar_robustez.py               # demanda linear, 3 sementes, ~4 h 30
 python avaliar_deslocamento.py           # público novo, 3 sementes, ~4 h 30
@@ -511,7 +536,7 @@ python ablacoes_cql.py && python diagnostico_cql.py
 O sequencial roda em paralelo, uma semente e cobrança por processo, e depois junta:
 
 ```bash
-for m in venda_unica assinatura; do for s in 42 43 44 45 46; do
+for m in venda_unica assinatura; do for s in $(seq 42 51); do
   OMP_NUM_THREADS=1 python avaliar_sequencial.py --modelos $m --semente-inicial $s --sementes 1 \
       --saida tmp/seq/${m}_s$s &
 done; done; wait
@@ -520,7 +545,7 @@ python avaliar_sequencial.py --agregar tmp/seq/* --saida resultados/sequencial
 
 | Script | Saída em `resultados/` | Seção |
 |---|---|---|
-| `avaliar_politicas.py` | `final_5_sementes/{tabela_artigo,comparacoes,por_semente,custo_explicabilidade}.csv`, `manifesto.json` | 6 |
+| `avaliar_politicas.py` | `final_10_sementes/{tabela_artigo,comparacoes,por_semente,custo_explicabilidade}.csv`, `manifesto.json` | 6 |
 | `avaliar_sequencial.py` | `sequencial/{tabela,tabela_legivel,comparacoes,por_semente,trajetorias}.csv`, `manifesto.json` | 9b |
 | `figura_sequencial.py` | `docs/figuras/sequencial_trajetorias.png` | 9b |
 | `avaliar_robustez.py` | `robustez_linear/` | 9b |
