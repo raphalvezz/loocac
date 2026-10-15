@@ -73,6 +73,14 @@ def construir(modelo, cenarios, args, avaliador):
 
 def rodar(args, cenarios):
     linhas, trajetorias = [], []
+    feitos = set()
+    if args.retomar and os.path.exists(os.path.join(args.saida, 'por_semente.csv')):
+        # retoma uma rodada interrompida: mantém o que já foi gravado e pula essas políticas
+        linhas = pd.read_csv(os.path.join(args.saida, 'por_semente.csv')).to_dict('records')
+        if os.path.exists(os.path.join(args.saida, 'trajetorias.csv')):
+            trajetorias = pd.read_csv(os.path.join(args.saida, 'trajetorias.csv')).to_dict('records')
+        feitos = {(r['modelo'], int(r['semente']), r['politica']) for r in linhas}
+        print(f'  retomando: {len(feitos)} políticas já avaliadas', flush=True)
     for modelo in args.modelos:
         avaliador = sq.Avaliador(cenarios, modelo)
         baixo = (avaliador.contextos['Tier'] == 'Low Ticket').to_numpy()
@@ -81,6 +89,8 @@ def rodar(args, cenarios):
         for semente in range(args.semente_inicial, args.semente_inicial + args.sementes):
             dados = sq.gerar_dados(cenarios, args.episodios, semente, modelo)
             for nome, p in construir(modelo, cenarios, args, avaliador).items():
+                if (modelo, semente, nome) in feitos:
+                    continue
                 t0 = time.perf_counter()
                 if hasattr(p, 'treinar'):
                     p.treinar(dados, semente)
@@ -157,6 +167,8 @@ def main():
     ap.add_argument('--kappa', type=float, help=f'κ (padrão {sq.KAPPA})')
     ap.add_argument('--lambda', dest='lam', type=float, help=f'λ (padrão {sq.LAMBDA})')
     ap.add_argument('--politicas', nargs='+', help=f'só estas políticas; opcionais: {OPCIONAIS}')
+    ap.add_argument('--retomar', action='store_true',
+                    help='continua uma rodada interrompida na mesma --saida (pula políticas já gravadas)')
     args = ap.parse_args()
     os.makedirs(args.saida, exist_ok=True)
     if args.kappa is not None:

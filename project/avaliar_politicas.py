@@ -137,6 +137,15 @@ def avaliar(args):
     cenarios = cs.conjunto(args.cenarios) if args.cenarios else carregar_cenarios()
     estados = sim.contextos(cenarios)
     linhas, custos = [], []
+    parcial = os.path.join(args.saida, 'parcial_por_semente.csv'), os.path.join(args.saida, 'parcial_custos.csv')
+    feitos = set()
+    if args.retomar and os.path.exists(parcial[0]):
+        # retoma uma rodada interrompida: mantém o que já foi gravado e pula essas políticas
+        linhas = pd.read_csv(parcial[0]).to_dict('records')
+        custos = pd.read_csv(parcial[1]).to_dict('records') if os.path.exists(parcial[1]) else []
+        feitos = {(r['modelo'], int(r['semente']), r['politica']) for r in linhas}
+        print(f'  retomando: {len(feitos)} políticas já avaliadas', flush=True)
+    os.makedirs(args.saida, exist_ok=True)
     for semente in args.sementes:
         print(f"\n=== semente {semente}: gerando dados ===")
         dados = sim.gerar_dados(cenarios, args.n_por_cenario, semente)
@@ -145,6 +154,8 @@ def avaliar(args):
         for modelo in MODELOS:
             otimo = lucros(consultar(pol.Oraculo(modelo, cenarios), estados), estados, cenarios, modelo)
             for politica in construir_politicas(modelo, cenarios, args):
+                if (modelo, semente, politica.nome) in feitos:
+                    continue
                 t0 = time.perf_counter()
                 politica.treinar(dados, semente)
                 t_treino = time.perf_counter() - t0
@@ -162,6 +173,8 @@ def avaliar(args):
                 custos.append({'modelo': modelo, 'politica': politica.nome, 'semente': semente,
                                'tempo_treino_s': t_treino, 'latencia_ms': latencia_ms,
                                'gpu': politica.gpu, 'explicabilidade': politica.explicabilidade})
+                pd.DataFrame(linhas).to_csv(parcial[0], index=False)  # progresso, para --retomar
+                pd.DataFrame(custos).to_csv(parcial[1], index=False)
     return pd.DataFrame(linhas), pd.DataFrame(custos)
 
 
@@ -224,6 +237,8 @@ def main():
     p.add_argument('--cenarios', choices=cs.CONJUNTOS, help='conjunto de cenários (cenarios_sensibilidade.py)')
     p.add_argument('--fracao-dados', type=float, default=1.0, help='fração do dataset usada (curva de aprendizado)')
     p.add_argument('--politicas', nargs='+', help=f'só estas políticas (nomes); extras: {sorted(EXTRAS)}')
+    p.add_argument('--retomar', action='store_true',
+                   help='continua uma rodada interrompida na mesma --saida (pula políticas já gravadas)')
     args = p.parse_args()
     args.sementes = list(range(args.semente_inicial, args.semente_inicial + args.sementes))
     if args.agregar:
