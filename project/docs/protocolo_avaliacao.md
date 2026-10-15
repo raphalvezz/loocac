@@ -128,6 +128,27 @@ Referência para o capítulo 5: `resultados/final_5_sementes/`. % do ótimo:
   por pouco (venda única, +2,3 p.p., todo no Low Ticket). A vantagem clara do RL
   aparece no ambiente sequencial (seção 9b).
 
+### Resultado com 10 sementes (2026-10-15, sementes 42–51, `resultados/final_10_sementes/`)
+
+| política | venda Low | venda High | venda Todos | assin. Low | assin. High | assin. Todos |
+|---|---|---|---|---|---|---|
+| aleatorio | 60,7 | 82,0 | 71,3 | 88,3 | 87,8 | 88,0 |
+| meio_faixa | 64,8 | 96,3 | 80,6 | 97,5 | 97,5 | 97,5 |
+| sl | 58,5 | 98,4 | 78,4 | 88,9 | 98,9 | 93,9 |
+| bandido | 66,4 | 99,0 | 82,7 | 99,1 | 99,0 | 99,0 |
+| bc | 69,0 | 96,6 | 82,8 | 97,7 | 97,8 | 97,7 |
+| **cql** | **70,4** | **99,4** | **84,9** | 98,2 | **99,7** | 98,9 |
+
+- **C1 e C3** continuam passando em todos os recortes.
+- **C2** passa no total dos dois modelos (venda única +2,2 p.p., IC 2,1 a 2,3;
+  assinatura −0,08, IC −0,15 a −0,01) e em todos os tiers, exceto o Low Ticket da
+  assinatura, que segue falhando por uma margem desprezível: −0,88 p.p., limite
+  inferior −1,0003 (com 5 sementes era −1,06).
+- Com 10 sementes os intervalos ficam mais estreitos e duas diferenças passam a ser
+  significativas: na venda única, High Ticket, o CQL supera o bandido (+0,42, IC 0,03
+  a 0,81); na assinatura, no total, o bandido supera o CQL por 0,08 p.p. (dentro da
+  margem de não-inferioridade). **Nenhuma conclusão muda.**
+
 ## 7. Generalização (fora da distribuição de treino)
 
 `avaliar_generalizacao.py` treina `sl` e `bandido` **sem** um grupo inteiro e avalia
