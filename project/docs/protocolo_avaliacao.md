@@ -93,6 +93,55 @@ ficam como estão em `resultados/final_5_sementes/` e no histórico do git, para
 se alguma conclusão (C1–C3, S1–S2) muda com a amostra maior. Se mudar, a conclusão
 reportada é a de 10 sementes e a mudança fica registrada aqui.
 
+### Por que 5 (e depois 10) sementes — nota de 2026-10-15
+
+As 5 sementes iniciais foram uma **escolha prática** (tempo de CPU: cada semente da
+comparação principal leva ~2,5 h só nos dois CQL), **não** o resultado de uma
+análise formal de poder feita antes. A extensão para 10 sementes (seção 5b) também
+foi decidida por custo. A análise de poder abaixo é **retrospectiva**: usa o
+desvio-padrão entre sementes observado (`analise_estatistica.py`,
+`resultados/estatistica/poder.csv`), teste t pareado unilateral, α = 2,5%, poder 80%.
+
+| comparação (total) | dp entre sementes (p.p.) | menor efeito detectável, 5 sementes | idem, 10 sementes | efeito observado (distância ao limiar) |
+|---|---|---|---|---|
+| C1 venda / assinatura | 1,47 / 1,17 | 2,4 / 1,9 | 1,5 / 1,2 | 13,6 / 10,9 |
+| C2 venda / assinatura | 0,13 / 0,10 | 0,22 / 0,16 | 0,13 / 0,10 | 3,2 / 0,92 |
+| C3 venda / assinatura | 0,08 / 0,04 | 0,13 / 0,07 | 0,08 / 0,04 | 4,4 / 1,5 |
+| S1 venda / assinatura | 1,30 / 0,84 | 2,2 / 1,4 | 1,3 / 0,83 | 8,8 / 13,9 |
+| S2 venda / assinatura | 1,42 / 0,52 | 2,4 / 0,87 | 1,4 / 0,52 | 6,1 / 11,6 |
+
+Leitura: todos os efeitos primários ficam muito acima do menor efeito detectável já
+com 5 sementes, então a amostra bastou **para estas hipóteses**. Não basta para
+diferenças finas: detectar 0,5 p.p. em S1 na venda única exigiria ~55 sementes. A
+limitação fica registrada: o número de sementes não foi escolhido por poder.
+
+### Correção para múltiplas comparações (2026-10-15)
+
+`analise_estatistica.py` refaz C1–C3 e S1–S2 como testes t pareados unilaterais
+(α = 2,5%, o mesmo que o IC 95% bilateral) e aplica Holm e Bonferroni em duas
+famílias: as 10 hipóteses primárias (5 critérios × 2 cobranças, no total) e as 30
+com os recortes por tier (`resultados/estatistica/testes.csv`).
+- Todas as 10 primárias são rejeitadas com Holm e com Bonferroni (maior p = 1,3×10⁻⁷,
+  S2 venda única; limiar de Bonferroni 0,0025).
+- Nas 30, 29 são rejeitadas com as duas correções. A única que não passa é a que já
+  não passava sem correção: C2 na assinatura, Low Ticket (p = 0,0252). **As
+  conclusões não mudam.**
+
+### Margem de −1 p.p. do C2 (2026-10-15)
+
+A margem foi fixada **por bom senso** antes dos resultados, não derivada de um
+cálculo. Para dar escala a ela:
+- A variação entre sementes de `cql − bandido` é de 0,10–0,13 p.p. (dp), então 1 p.p.
+  não é uma margem "de ruído": é uma diferença de importância prática.
+- A vantagem do bandido sobre a melhor regra fixa (`meio_faixa`) é de 2,15 p.p. na
+  venda única e 1,55 p.p. na assinatura. Pela regra usual de não-inferioridade
+  (preservar ao menos 50% do efeito do comparador sobre a referência), a margem seria
+  −1,07 p.p. na venda única e −0,77 p.p. na assinatura. A margem de −1 p.p. é, então,
+  mais frouxa que essa regra na assinatura.
+- Refeito com a margem derivada (−0,77 p.p. na assinatura; −0,76 a −1,31 p.p. por
+  tier), C2 dá o mesmo resultado em todos os recortes: passa no total das duas
+  cobranças e em todos os tiers, exceto o Low Ticket da assinatura, que já falhava.
+
 ## 6. Critérios de sucesso (confirmados em 2026-10-09)
 
 Avaliados no total (Todos) e por tier, separadamente para venda única e assinatura:
@@ -294,6 +343,20 @@ S1 e S2 continuam confirmados nas duas cobranças, no total e em cada tier (todo
 limites inferiores acima de zero; o menor é +3,9 p.p., S2 na venda única, Low
 Ticket). Os números mudam menos de 0,5 p.p. em relação às 5 sementes. **Nenhuma
 conclusão muda.**
+
+### Distância exata ao ótimo da programação dinâmica (10 sementes)
+
+`resultados/estatistica/distancia_oraculo.csv` (p.p. abaixo de 100%, média [IC 95%],
+mínimo–máximo entre as sementes):
+
+| CQL γ = 0,95 | Low Ticket | High Ticket | Todos |
+|---|---|---|---|
+| venda única | 28,8 [26,6; 31,1], 22,6–33,7 | 2,7 [2,0; 3,5], 1,3–4,3 | **15,8** [14,9; 16,7], 13,2–17,7 |
+| assinatura | 1,6 [1,3; 1,8], 1,0–2,0 | 1,9 [1,6; 2,1], 1,5–2,6 | **1,7** [1,5; 1,9], 1,3–2,3 |
+
+Para comparação, no total: oráculo míope a 10,3 p.p. (venda) e 17,3 p.p.
+(assinatura); bandido a 24,6 e 15,6 p.p. Na venda única quase toda a distância do
+CQL está no Low Ticket, onde o estado não identifica o cenário.
 
 ### Resultado preliminar do ambiente sequencial (2026-10-10, venda única, 3 sementes, 20.000 passos)
 

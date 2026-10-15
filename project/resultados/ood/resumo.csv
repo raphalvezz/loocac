@@ -1,0 +1,7 @@
+ambiente,modelo,tier,n,fora_faixa_estado_pct,na_borda_pct,fora_faixa_cenario_pct,sem_vizinhos_pct,vizinhos_mediana
+estatico,venda_unica,Low Ticket,72,0.0,0.0,33.33333333333333,23.61111111111111,15.0
+estatico,venda_unica,High Ticket,72,0.0,0.0,0.0,0.0,18.0
+estatico,assinatura,Low Ticket,72,0.0,0.0,0.0,0.0,17.0
+estatico,assinatura,High Ticket,72,0.0,0.0,0.0,0.0,17.0
+estatico,venda_unica,Todos,144,0.0,0.0,16.666666666666664,11.805555555555555,17.0
+estatico,assinatura,Todos,144,0.0,0.0,0.0,0.0,17.0
