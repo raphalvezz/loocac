@@ -40,8 +40,11 @@ mas a reputação que ela acompanha é a do Gêmeo Digital, não uma medida real
 O checkpoint do CQL (e do BC) é escolhido pelo lucro no simulador, informação que
 um sistema real não teria. A avaliação fora da política (FQE, `resultados/fqe.csv`)
 acerta o % do ótimo no agregado (85,1% estimado contra 85,0% no simulador para o CQL
-da venda única), mas erra em média 26% por estado: serve como verificação do total,
-não como substituto do simulador.
+da venda única), mas erra em média 26% por estado e não serve para escolher entre
+checkpoints (ordem invertida na venda única). O importance sampling ponderado (WIS)
+escolheu checkpoints a no máximo 0,17 p.p. do melhor (seção 9d do protocolo), mas só
+porque a coleta simulada é uniforme e de propensão conhecida; com dados reais essa
+vantagem diminuiria.
 
 ## 5. Generalização para público novo
 

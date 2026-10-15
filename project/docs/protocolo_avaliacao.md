@@ -323,6 +323,42 @@ Comparações pareadas (p.p., IC 95%):
   extrapola a curva de lucro aprendida com a região como variável, e a região do
   destino é uma categoria nunca vista.
 
+## 9d. Seleção de checkpoint sem o simulador: FQE contra WIS (2026-10-15)
+
+`avaliar_selecao_ope.py`: um treino de 50.000 passos do CQL por semente e cobrança
+(3 sementes), com checkpoints a cada 5.000 passos (10 por treino). Cada checkpoint
+recebe três notas: o % do ótimo verdadeiro (simulador), o estimado pelo FQE (seção
+9b) e o estimado por **importance sampling ponderado (WIS)** com núcleo gaussiano
+(h = 0,1 na escala da ação) e as propensões conhecidas da coleta (preço uniforme na
+faixa do cenário). Os dois estimadores usam só os 20% de dados que o agente não viu.
+
+| | Spearman com o verdadeiro | arrependimento (p.p.) | escolhe o mesmo checkpoint |
+|---|---|---|---|
+| FQE, venda única | −0,49 a −0,27 | 1,0 a 1,6 | — |
+| WIS, venda única | 0,68 a 0,83 | 0,0 a 0,17 | — |
+| FQE, assinatura | 0,22 a 0,26 | 0,22 a 0,30 | — |
+| WIS, assinatura | 0,90 a 0,98 | 0,01 a 0,13 | — |
+| FQE × WIS | −0,37 a 0,42 | — | 0 de 6 |
+
+Arrependimento = % do ótimo do melhor checkpoint verdadeiro − % do checkpoint
+escolhido pelo estimador (`resultados/selecao_ope/resumo.csv`).
+
+- **O WIS ordena os checkpoints quase como o simulador** e escolhe um que fica a
+  no máximo 0,17 p.p. do melhor. Superestima o nível em ~2–3 p.p. na venda única
+  (ESS de ~15 linhas por contexto), mas o nível não importa para escolher.
+- **O FQE não serve para escolher checkpoint aqui:** na venda única a ordem sai
+  invertida (Spearman negativo) e ele escolhe sempre o último checkpoint, que é dos
+  piores (arrependimento de até 1,6 p.p.); na assinatura a ordem é quase aleatória.
+  Os dois estimadores nunca escolheram o mesmo checkpoint.
+- Por que o WIS vai bem: a política de coleta é conhecida e cobre toda a faixa
+  (preço uniforme), exatamente a condição em que importance sampling funciona. O FQE
+  depende de um modelo Q aprendido em ~10 mil linhas, cujo erro é maior que as
+  diferenças (décimos de p.p.) entre checkpoints. Com dados reais de uma coleta
+  menos aleatória, o WIS perderia essa vantagem (pesos maiores, ESS menor).
+- Consequência: um sistema sem simulador poderia escolher o checkpoint do CQL pelo
+  WIS sem perda relevante; o resultado da seção 9b (FQE acerta o nível agregado de
+  um modelo pronto) não se estende à comparação fina entre checkpoints.
+
 ## 9c. Risco (VaR/CVaR 5%) de cada método (2026-10-14)
 
 SL e bandido ganharam regressão quantílica (`treinar_quantis.py`: LightGBM com
@@ -437,6 +473,7 @@ python avaliar_deslocamento.py           # público novo, 3 sementes, ~4 h 30
 python avaliar_bandido_robusto.py        # sensibilidade do bandido, ~20 min
 python avaliar_fqe.py                    # FQE; precisa dos modelos do train_pipeline.py, ~15 min
 python avaliar_risco.py                  # calibração do VaR/CVaR; idem (com treinar_quantis.py), ~5 min
+python avaliar_selecao_ope.py --sementes 3   # FQE x WIS na escolha do checkpoint, ~6 h
 
 # Análises complementares
 python avaliar_generalizacao.py           # regiões e cenários fora do treino, 1 semente, ~2 h
@@ -470,6 +507,7 @@ python avaliar_sequencial.py --agregar tmp/seq/* --saida resultados/sequencial
 | `avaliar_bandido_robusto.py` | `bandido_robusto/{tabela,por_semente}.csv` | 9b |
 | `avaliar_fqe.py` | `fqe.csv`, `fqe_por_estado.csv` | 9b |
 | `treinar_quantis.py` + `avaliar_risco.py` | `risco.csv`, `risco_por_estado.csv` | 9c |
+| `avaliar_selecao_ope.py` | `selecao_ope/{checkpoints,resumo}.csv` | 9d |
 | `avaliar_generalizacao.py` | `generalizacao.csv`, `generalizacao_resumo.csv` | 7 |
 | `simular_bandido_online.py` + `figura_bandido_online.py` | `bandido_online_{120,1200}/`, `docs/figuras/bandido_online_*_iniciais.png` | 8 |
 | `ablacoes_cql.py`, `diagnostico_cql.py` | `ablacoes_cql*.csv`, `diagnostico_cql.csv` | 9 |
