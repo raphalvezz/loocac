@@ -1,0 +1,17 @@
+{
+  "T": 12,
+  "kappa": 0.15,
+  "lambda": 0.85,
+  "cenarios": "padrao",
+  "politicas": [
+    "iql_g095"
+  ],
+  "modelos": [
+    "venda_unica"
+  ],
+  "sementes": [
+    42
+  ],
+  "episodios_por_cenario": 200,
+  "passos_cql": 50000
+}

@@ -695,6 +695,36 @@ do mesmo lado de zero.
   dados também passaram a ser excluídos offline (em operação eles teriam índice
   infinito). Os números acima são da rodada corrigida.
 
+### 9h.5 Resultado: IQL contra CQL no ambiente sequencial (5 sementes, `resultados/iql/`)
+
+Mesmo protocolo do `cql_g095` (γ = 0,95, recompensa por contexto, até 50.000 passos,
+seleção de checkpoint e parada pelo lucro simulado), pareado nas sementes 42–46:
+
+| % do ótimo da PD, total | venda única | assinatura |
+|---|---|---|
+| bandido | 75,5 | 84,4 |
+| CQL γ = 0 | 78,1 | 86,7 |
+| **IQL γ = 0,95** | **84,4** | **92,3** |
+| **CQL γ = 0,95** | **84,5** | **98,4** |
+
+| | venda única | assinatura |
+|---|---|---|
+| `iql_g095 − cql_g095` | −0,09 (−1,57 a 1,39), inconclusivo | **−6,06 (−6,50 a −5,61)** |
+| `iql_g095 − bandido` | +8,90 (7,05 a 10,75) | +7,88 (7,36 a 8,41) |
+| `iql_g095 − cql_g0` | +6,30 (4,11 a 8,49) | +5,56 (5,24 a 5,88) |
+
+- **A conclusão do TCC não depende do algoritmo:** com IQL, planejar (γ = 0,95)
+  também supera o bandido e o RL míope nas duas cobranças, em todos os tiers.
+- Na venda única IQL e CQL empatam; na assinatura o CQL fica 6 p.p. à frente. O IQL
+  nunca avalia Q fora das ações logadas, e a política sai de uma regressão ponderada
+  sobre essas ações: com coleta uniforme ele tende a ficar mais perto do
+  comportamento dos dados, enquanto a assinatura pede preços baixos persistentes no
+  começo da campanha (seção 9e), uma região mais rara nos dados.
+- Custo: o IQL parou cedo pela regra de paciência (mesma do CQL) e treinou em ~13 min
+  por modelo, contra 1,5–2 h do CQL. Os hiperparâmetros do IQL são os do artigo
+  original, sem ajuste; não foi feita busca para nenhum dos dois algoritmos neste
+  ambiente.
+
 ## 10. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),

@@ -166,9 +166,12 @@ def main():
 
     if args.agregar:
         det = pd.concat([pd.read_csv(os.path.join(d, 'por_semente.csv')) for d in args.agregar], ignore_index=True)
+        # linhas idênticas (os oráculos, que vão junto como referência) contam uma vez
+        det = det.round({'pct_do_otimo': 9}).drop_duplicates(['modelo', 'politica', 'semente', 'tier', 'pct_do_otimo'])
         if det.duplicated(['modelo', 'politica', 'semente', 'tier']).any():
-            raise SystemExit('a mesma semente aparece em mais de uma pasta')
-        traj = pd.concat([pd.read_csv(os.path.join(d, 'trajetorias.csv')) for d in args.agregar], ignore_index=True)
+            raise SystemExit('a mesma semente aparece em mais de uma pasta com valores diferentes')
+        traj = pd.concat([pd.read_csv(os.path.join(d, 'trajetorias.csv')) for d in args.agregar], ignore_index=True) \
+            .drop_duplicates(['modelo', 'politica', 'semente', 'periodo'])
         manifestos = [json.load(open(os.path.join(d, 'manifesto.json'))) for d in args.agregar]
         passos = sorted({m['passos_cql'] for m in manifestos}, key=str)
         if len(passos) > 1:
