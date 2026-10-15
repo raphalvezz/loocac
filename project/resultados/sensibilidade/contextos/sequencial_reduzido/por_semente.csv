@@ -1,0 +1,91 @@
+modelo,politica,semente,tier,pct_do_otimo,tempo_treino_s
+assinatura,bandido,42,Low Ticket,85.554900846,14.595748941999773
+assinatura,bandido,42,High Ticket,84.354466483,14.595748941999773
+assinatura,bandido,42,Todos,85.074727101,14.595748941999773
+assinatura,cql_g0,42,Low Ticket,86.94099969,3666.193784130999
+assinatura,cql_g0,42,High Ticket,86.145317731,3666.193784130999
+assinatura,cql_g0,42,Todos,86.622726907,3666.193784130999
+assinatura,cql_g095,42,Low Ticket,94.837539474,3448.536366174
+assinatura,cql_g095,42,High Ticket,95.446348942,3448.536366174
+assinatura,cql_g095,42,Todos,95.081063261,3448.536366174
+assinatura,oraculo_miope,42,Low Ticket,82.816575304,2.1570012904703617e-06
+assinatura,oraculo_miope,42,High Ticket,83.353410576,2.1570012904703617e-06
+assinatura,oraculo_miope,42,Todos,83.031309413,2.1570012904703617e-06
+assinatura,oraculo_pd,42,Low Ticket,99.999946556,2.0949992176610976e-06
+assinatura,oraculo_pd,42,High Ticket,99.999955159,2.0949992176610976e-06
+assinatura,oraculo_pd,42,Todos,99.999949997,2.0949992176610976e-06
+assinatura,bandido,43,Low Ticket,85.039207817,27.826527341001565
+assinatura,bandido,43,High Ticket,82.988926344,27.826527341001565
+assinatura,bandido,43,Todos,84.219095227,27.826527341001565
+assinatura,cql_g0,43,Low Ticket,86.365544142,3418.398367375001
+assinatura,cql_g0,43,High Ticket,86.896169387,3418.398367375001
+assinatura,cql_g0,43,Todos,86.57779424,3418.398367375001
+assinatura,cql_g095,43,Low Ticket,95.266086643,3404.993905620002
+assinatura,cql_g095,43,High Ticket,94.860221337,3404.993905620002
+assinatura,cql_g095,43,Todos,95.103740521,3404.993905620002
+assinatura,oraculo_miope,43,Low Ticket,82.816575304,1.8879982235375792e-06
+assinatura,oraculo_miope,43,High Ticket,83.353410576,1.8879982235375792e-06
+assinatura,oraculo_miope,43,Todos,83.031309413,1.8879982235375792e-06
+assinatura,oraculo_pd,43,Low Ticket,99.999946556,1.4950019249226898e-06
+assinatura,oraculo_pd,43,High Ticket,99.999955159,1.4950019249226898e-06
+assinatura,oraculo_pd,43,Todos,99.999949997,1.4950019249226898e-06
+assinatura,bandido,44,Low Ticket,84.932121111,13.5487069539995
+assinatura,bandido,44,High Ticket,84.584826815,13.5487069539995
+assinatura,bandido,44,Todos,84.793203393,13.5487069539995
+assinatura,cql_g0,44,Low Ticket,86.701373092,3708.8160787330016
+assinatura,cql_g0,44,High Ticket,86.180561126,3708.8160787330016
+assinatura,cql_g0,44,Todos,86.493048305,3708.8160787330016
+assinatura,cql_g095,44,Low Ticket,96.14603524,3330.862941291998
+assinatura,cql_g095,44,High Ticket,94.027929536,3330.862941291998
+assinatura,cql_g095,44,Todos,95.298792958,3330.862941291998
+assinatura,oraculo_miope,44,Low Ticket,82.816575304,2.215998392784968e-06
+assinatura,oraculo_miope,44,High Ticket,83.353410576,2.215998392784968e-06
+assinatura,oraculo_miope,44,Todos,83.031309413,2.215998392784968e-06
+assinatura,oraculo_pd,44,Low Ticket,99.999946556,1.896998583106324e-06
+assinatura,oraculo_pd,44,High Ticket,99.999955159,1.896998583106324e-06
+assinatura,oraculo_pd,44,Todos,99.999949997,1.896998583106324e-06
+venda_unica,bandido,42,Low Ticket,60.983896956,10.3778181710004
+venda_unica,bandido,42,High Ticket,90.601464954,10.3778181710004
+venda_unica,bandido,42,Todos,72.830924155,10.3778181710004
+venda_unica,cql_g0,42,Low Ticket,64.383427065,3577.4065412029995
+venda_unica,cql_g0,42,High Ticket,90.779249959,3577.4065412029995
+venda_unica,cql_g0,42,Todos,74.941756222,3577.4065412029995
+venda_unica,cql_g095,42,Low Ticket,67.246070678,3775.0671166469983
+venda_unica,cql_g095,42,High Ticket,95.901997435,3775.0671166469983
+venda_unica,cql_g095,42,Todos,78.708441381,3775.0671166469983
+venda_unica,oraculo_miope,42,Low Ticket,90.343510042,1.7550009943079203e-06
+venda_unica,oraculo_miope,42,High Ticket,89.23149131,1.7550009943079203e-06
+venda_unica,oraculo_miope,42,Todos,89.898702549,1.7550009943079203e-06
+venda_unica,oraculo_pd,42,Low Ticket,99.99992941,2.4040018615778536e-06
+venda_unica,oraculo_pd,42,High Ticket,99.999937176,2.4040018615778536e-06
+venda_unica,oraculo_pd,42,Todos,99.999932517,2.4040018615778536e-06
+venda_unica,bandido,43,Low Ticket,62.175569561,15.23601481500009
+venda_unica,bandido,43,High Ticket,87.367789942,15.23601481500009
+venda_unica,bandido,43,Todos,72.252457713,15.23601481500009
+venda_unica,cql_g0,43,Low Ticket,65.217235251,3447.364968711001
+venda_unica,cql_g0,43,High Ticket,90.817157307,3447.364968711001
+venda_unica,cql_g0,43,Todos,75.457204073,3447.364968711001
+venda_unica,cql_g095,43,Low Ticket,66.81303836,3336.473846493001
+venda_unica,cql_g095,43,High Ticket,93.38261359,3336.473846493001
+venda_unica,cql_g095,43,Todos,77.440868452,3336.473846493001
+venda_unica,oraculo_miope,43,Low Ticket,90.343510042,1.8660030036699029e-06
+venda_unica,oraculo_miope,43,High Ticket,89.23149131,1.8660030036699029e-06
+venda_unica,oraculo_miope,43,Todos,89.898702549,1.8660030036699029e-06
+venda_unica,oraculo_pd,43,Low Ticket,99.99992941,1.529999281046912e-06
+venda_unica,oraculo_pd,43,High Ticket,99.999937176,1.529999281046912e-06
+venda_unica,oraculo_pd,43,Todos,99.999932517,1.529999281046912e-06
+venda_unica,bandido,44,Low Ticket,61.26349826,17.00433718700151
+venda_unica,bandido,44,High Ticket,90.090647724,17.00433718700151
+venda_unica,bandido,44,Todos,72.794358046,17.00433718700151
+venda_unica,cql_g0,44,Low Ticket,65.939721704,3433.997868404
+venda_unica,cql_g0,44,High Ticket,90.186115473,3433.997868404
+venda_unica,cql_g0,44,Todos,75.638279212,3433.997868404
+venda_unica,cql_g095,44,Low Ticket,72.434444115,3236.7673738190024
+venda_unica,cql_g095,44,High Ticket,97.792986241,3236.7673738190024
+venda_unica,cql_g095,44,Todos,82.577860965,3236.7673738190024
+venda_unica,oraculo_miope,44,Low Ticket,90.343510042,2.357999619562179e-06
+venda_unica,oraculo_miope,44,High Ticket,89.23149131,2.357999619562179e-06
+venda_unica,oraculo_miope,44,Todos,89.898702549,2.357999619562179e-06
+venda_unica,oraculo_pd,44,Low Ticket,99.99992941,1.600998075446114e-06
+venda_unica,oraculo_pd,44,High Ticket,99.999937176,1.600998075446114e-06
+venda_unica,oraculo_pd,44,Todos,99.999932517,1.600998075446114e-06
