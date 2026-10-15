@@ -1,0 +1,61 @@
+modelo,politica,semente,tempo_treino_s,latencia_ms,gpu,explicabilidade
+venda_unica,oraculo,42,1.8669998098630458e-06,0.2192790902771296,não,referência (usa o simulador e o cenário verdadeiro)
+venda_unica,ucb1,42,1.359563603000197,0.1401745208321851,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,thompson_tab,42,1.4420693790000314,0.34942053472282925,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,oraculo,42,2.1749999632447725e-06,0.159617895833877,não,referência (usa o simulador e o cenário verdadeiro)
+assinatura,ucb1,42,1.4562541469999815,0.15214101388810125,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,thompson_tab,42,1.6228647769999043,0.259048506944421,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,oraculo,43,2.316000063729007e-06,0.11986609722214325,não,referência (usa o simulador e o cenário verdadeiro)
+venda_unica,ucb1,43,1.1756131570000434,0.1467272013889619,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,thompson_tab,43,1.2752610430000004,0.2718827291658954,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,oraculo,43,2.1579999156529084e-06,0.1421935624992759,não,referência (usa o simulador e o cenário verdadeiro)
+assinatura,ucb1,43,1.3584359509998194,0.1628308888888973,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,thompson_tab,43,1.4666322289999698,0.27553072916614635,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,oraculo,44,2.8429999474610668e-06,0.13841656944338057,não,referência (usa o simulador e o cenário verdadeiro)
+venda_unica,ucb1,44,1.449256005999814,0.14328265277817487,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,thompson_tab,44,1.2210280629999488,0.2600473888902697,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,oraculo,44,2.0369998310343362e-06,0.13550775694505368,não,referência (usa o simulador e o cenário verdadeiro)
+assinatura,ucb1,44,1.2429431780001323,0.1497936388877482,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,thompson_tab,44,1.2321701450000546,0.2711834166654449,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,oraculo,45,1.4150000424706377e-06,0.12314847222209362,não,referência (usa o simulador e o cenário verdadeiro)
+venda_unica,ucb1,45,1.3097944170001483,0.14122780555680947,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,thompson_tab,45,1.2679005709999274,0.2707300763897062,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,oraculo,45,1.993999831029214e-06,0.13828772222268526,não,referência (usa o simulador e o cenário verdadeiro)
+assinatura,ucb1,45,1.4014902379999512,0.1464420902787348,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,thompson_tab,45,1.3410177420000764,0.3240126736096095,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,oraculo,46,3.214000116713578e-06,0.12738307638926472,não,referência (usa o simulador e o cenário verdadeiro)
+venda_unica,ucb1,46,1.4890997940001398,0.1871104305561428,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,thompson_tab,46,1.2210172300001432,0.2812878819453444,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,oraculo,46,2.5659999209892703e-06,0.23365839583296596,não,referência (usa o simulador e o cenário verdadeiro)
+assinatura,ucb1,46,1.377153163999992,0.1693685763891987,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,thompson_tab,46,1.4039392079998834,0.45900434722214967,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,oraculo,47,2.0590000531228725e-06,0.11919138194432183,não,referência (usa o simulador e o cenário verdadeiro)
+venda_unica,ucb1,47,1.2128215500001716,0.15128594444351823,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,thompson_tab,47,1.4723229190001348,0.35763715972178844,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,oraculo,47,1.3359999684325885e-06,0.1336502986109483,não,referência (usa o simulador e o cenário verdadeiro)
+assinatura,ucb1,47,1.2617086130001098,0.14124832638944756,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,thompson_tab,47,1.3142861910000647,0.29531922222266377,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,oraculo,48,2.275000042573083e-06,0.1210897152787993,não,referência (usa o simulador e o cenário verdadeiro)
+venda_unica,ucb1,48,1.2202502069999355,0.13464940972261907,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,thompson_tab,48,1.415711619999911,0.30983418750136277,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,oraculo,48,2.536000010877615e-06,0.14079557638998116,não,referência (usa o simulador e o cenário verdadeiro)
+assinatura,ucb1,48,1.2656730009998682,0.14941912499940221,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,thompson_tab,48,1.3658866260000195,0.2759346875001888,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,oraculo,49,3.656999979284592e-06,0.12213011805468138,não,referência (usa o simulador e o cenário verdadeiro)
+venda_unica,ucb1,49,1.2542731480000384,0.15080740972134915,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,thompson_tab,49,1.2955789110001206,0.25852547222074107,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,oraculo,49,3.13300006382633e-06,0.134537312500053,não,referência (usa o simulador e o cenário verdadeiro)
+assinatura,ucb1,49,1.3096545200000946,0.14678694444430423,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,thompson_tab,49,1.1977855299999192,0.266955326387751,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,oraculo,50,2.2250001165957656e-06,0.1257473055555162,não,referência (usa o simulador e o cenário verdadeiro)
+venda_unica,ucb1,50,1.3882013140000709,0.1549899513880367,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,thompson_tab,50,1.3459834440000122,0.3576610208331961,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,oraculo,50,2.0869999843853293e-06,0.16215822222262785,não,referência (usa o simulador e o cenário verdadeiro)
+assinatura,ucb1,50,1.6368733060000977,0.1557318472230741,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,thompson_tab,50,1.493402104000097,0.5430724861115424,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,oraculo,51,2.275999804624007e-06,0.12316113194464783,não,referência (usa o simulador e o cenário verdadeiro)
+venda_unica,ucb1,51,1.3487410320001345,0.15831097916595305,não,total: tabela de lucro médio por estado e faixa de preço
+venda_unica,thompson_tab,51,1.3258335209998222,0.2949115486122385,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,oraculo,51,1.0139999631064711e-06,0.1389984930552954,não,referência (usa o simulador e o cenário verdadeiro)
+assinatura,ucb1,51,1.4702772780001396,0.1561397361105795,não,total: tabela de lucro médio por estado e faixa de preço
+assinatura,thompson_tab,51,1.5298450880000019,0.4246583888879564,não,total: tabela de lucro médio por estado e faixa de preço

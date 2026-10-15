@@ -133,7 +133,9 @@ class BandidoTabular(Politica):
                         sampling gaussiano), com semente fixa por estado
 
     Treinado nos dados logados e avaliado sem novas interações, como as demais
-    políticas offline. UCB1 e Thompson foram feitos para aprender em operação; com a
+    políticas offline. Um braço sem dados (n = 0; n ≤ 1 no Thompson) recebe índice
+    infinito em operação ("teste primeiro o que nunca testou"), mas offline não há
+    como testá-lo: aqui ele fica de fora. UCB1 e Thompson foram feitos para aprender em operação; com a
     coleta uniforme (contagens parecidas em todos os braços) os dois ficam próximos
     da média empírica gulosa.
     """
@@ -148,8 +150,9 @@ class BandidoTabular(Politica):
         self.nome = 'ucb1' if regra == 'ucb1' else 'thompson_tab'
 
     def _chaves(self, estados):
-        return [(r, p) + tuple(k) for r, p, k in zip(estados['Regiao'], estados['Plataforma'],
-                                                      chaves(self.modelo, estados))]
+        # texto canônico: o mesmo estado tem a mesma chave venha de numpy ou de Python
+        return [repr(tuple(str(x) for x in (r, p) + tuple(k)))
+                for r, p, k in zip(estados['Regiao'], estados['Plataforma'], chaves(self.modelo, estados))]
 
     def _bracos(self, estados):
         return np.stack([np.geomspace(lo, hi, self.n_bracos) for lo, hi in self.faixas(estados)])
@@ -160,7 +163,7 @@ class BandidoTabular(Politica):
         bracos = self._bracos(treino)
         braco = np.abs(np.log(bracos) - np.log(treino['Preco_Amostra'].to_numpy())[:, None]).argmin(axis=1)
         lucro = treino[ALVO[self.modelo]].to_numpy(dtype=float)
-        df = pd.DataFrame({'estado': [str(k) for k in self._chaves(treino)], 'braco': braco, 'lucro': lucro})
+        df = pd.DataFrame({'estado': self._chaves(treino), 'braco': braco, 'lucro': lucro})
         df['lucro'] /= df.groupby('estado')['lucro'].transform('mean')
         self.tabela = {e: g.groupby('braco')['lucro'].agg(['count', 'mean', 'var']).reindex(range(self.n_bracos))
                        for e, g in df.groupby('estado')}
@@ -169,19 +172,21 @@ class BandidoTabular(Politica):
     def precos(self, estados):
         bracos = self._bracos(estados)
         out = np.empty(len(estados))
+        self.estados_sem_dados = 0
         for i, chave in enumerate(self._chaves(estados)):
-            t = self.tabela.get(str(chave))
+            t = self.tabela.get(chave)
             if t is None:  # estado nunca logado: meio da faixa
+                self.estados_sem_dados += 1
                 out[i] = bracos[i, self.n_bracos // 2]
                 continue
             n = t['count'].fillna(0).to_numpy()
             media = t['mean'].fillna(0).to_numpy()
             if self.regra == 'ucb1':
                 indice = np.where(n > 0, media + self.c * np.sqrt(2 * np.log(max(n.sum(), 1)) / np.maximum(n, 1)),
-                                  np.inf)
+                                  -np.inf)
             else:
-                rng = np.random.default_rng([self.semente, zlib.crc32(str(chave).encode())])
+                rng = np.random.default_rng([self.semente, zlib.crc32(chave.encode())])
                 var = t['var'].fillna(t['var'].mean()).to_numpy()
-                indice = np.where(n > 1, rng.normal(media, np.sqrt(var / np.maximum(n, 1))), np.inf)
+                indice = np.where(n > 1, rng.normal(media, np.sqrt(var / np.maximum(n, 1))), -np.inf)
             out[i] = bracos[i, int(np.argmax(indice))]
         return out

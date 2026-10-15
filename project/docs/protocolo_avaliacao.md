@@ -668,6 +668,33 @@ do mesmo lado de zero.
    42–46, pareado com o `cql_g095` das mesmas sementes. Hiperparâmetros do artigo
    original do IQL (expectil 0,7, temperatura 3), sem ajuste.
 
+### 9h.4 Resultado: bandido clássico sem ML (10 sementes, `resultados/baselines_classicos/`)
+
+| % do ótimo, total | venda única | assinatura |
+|---|---|---|
+| meio da faixa | 80,6 | 97,5 |
+| **UCB1** (tabela, 10 braços) | 72,6 | 83,9 |
+| **Thompson** (tabela, 10 braços) | 82,2 | 98,1 |
+| bandido (LightGBM) | 82,7 | 99,0 |
+| CQL | 84,9 | 98,9 |
+
+- **Thompson** fica perto do bandido com LightGBM (−0,5 p.p. na venda única, −0,9 na
+  assinatura; IC 95% abaixo de zero nos dois) e acima da regra fixa. É o resultado
+  esperado de um bandido sem modelo quando a coleta cobre bem cada estado: a tabela
+  só perde por não generalizar entre estados nem entre preços vizinhos.
+- **UCB1 offline fica abaixo da regra fixa** (−7,9 e −13,5 p.p.). O bônus de
+  exploração (Auer et al., 2002) favorece os braços com menos dados; em operação isso
+  compra informação, mas offline não há nova informação a comprar, e a política acaba
+  escolhendo os preços menos observados. É um exemplo direto de por que o RL offline
+  usa pessimismo (CQL, IQL) e não otimismo.
+- O CQL supera os dois (+2,7 e +12,3 p.p. sobre Thompson e UCB1 na venda única).
+- **Correção antes do resultado:** a primeira rodada deu valores idênticos em todas
+  as sementes. A causa era um erro de chave (texto de `numpy.str_` no treino contra
+  `str` na avaliação), que fazia toda consulta cair no braço do meio. Corrigido, com
+  teste (`tests/test_politicas.py::test_bandido_tabular_usa_a_tabela`); braços sem
+  dados também passaram a ser excluídos offline (em operação eles teriam índice
+  infinito). Os números acima são da rodada corrigida.
+
 ## 10. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),
@@ -786,6 +813,7 @@ python avaliar_sequencial.py --agregar tmp/seq/* --saida resultados/sequencial
 | `analise_estatistica.py` | `estatistica/{testes,poder,distancia_oraculo}.csv` | 5, 6, 9b |
 | `calibracao_sequencial.py` | `calibracao_sequencial.csv` | 9f |
 | `estabilidade_shap.py` | `shap/{importancia_por_semente,estabilidade}.csv` | 9g |
+| `avaliar_politicas.py --sem-cql --politicas ucb1 thompson_tab` | `baselines_classicos/` | 9h |
 | `avaliar_generalizacao.py` | `generalizacao.csv`, `generalizacao_resumo.csv` | 7 |
 | `simular_bandido_online.py` + `figura_bandido_online.py` | `bandido_online_{120,1200}/`, `docs/figuras/bandido_online_*_iniciais.png` | 8 |
 | `ablacoes_cql.py`, `diagnostico_cql.py` | `ablacoes_cql*.csv`, `diagnostico_cql.csv` | 9 |

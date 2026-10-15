@@ -234,9 +234,14 @@ def main():
         manifestos = sorted(manifestos, key=lambda m: not m.get('cql_incluido', True))
         por_semente = pd.concat([pd.read_csv(os.path.join(d, 'por_semente.csv')) for d in args.agregar],
                                 ignore_index=True)
+        # linhas idênticas (ex.: o oráculo, que vai junto como referência) contam uma vez;
+        # a mesma semente com valores diferentes é erro
+        por_semente = por_semente.round({'pct_do_otimo': 9}).drop_duplicates(
+            ['modelo', 'politica', 'semente', 'tier', 'pct_do_otimo'])
         if por_semente.duplicated(['modelo', 'politica', 'semente', 'tier']).any():
-            raise SystemExit('a mesma semente aparece em mais de uma pasta')
-        custos = pd.concat([ler_custos(d, m) for d, m in zip(args.agregar, manifestos)], ignore_index=True)
+            raise SystemExit('a mesma semente aparece em mais de uma pasta com valores diferentes')
+        custos = pd.concat([ler_custos(d, m) for d, m in zip(args.agregar, manifestos)], ignore_index=True) \
+            .drop_duplicates(['modelo', 'politica', 'semente'])
         args.sementes = sorted(int(x) for x in por_semente['semente'].unique())
         args.passos_cql, args.sem_cql = manifestos[0]['passos_cql'], not manifestos[0]['cql_incluido']
         args.n_por_cenario = manifestos[0]['n_por_cenario']
