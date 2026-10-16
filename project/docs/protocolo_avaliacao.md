@@ -725,6 +725,40 @@ seleção de checkpoint e parada pelo lucro simulado), pareado nas sementes 42�
   original, sem ajuste; não foi feita busca para nenhum dos dois algoritmos neste
   ambiente.
 
+### 9h.1 Resultado: número de contextos (3 sementes, CQL 20.000 passos, `resultados/sensibilidade/contextos/`)
+
+**Estático** (% do ótimo, total; `cql − bandido` em p.p. com IC 95%):
+
+| | 60 contextos | 144 (principal, 10 sementes, 50 mil passos) | 432 contextos |
+|---|---|---|---|
+| venda única: bandido / CQL | 79,2 / 82,4 | 82,7 / 84,9 | 82,5 / 84,6 |
+| venda única: `cql − bandido` | +3,2 (2,7 a 3,6) | +2,2 | +2,1 (1,8 a 2,3) |
+| assinatura: bandido / CQL | 98,7 / 98,4 | 99,0 / 98,9 | 99,2 / 98,4 |
+| assinatura: `cql − bandido` | −0,3 (−0,5 a −0,1) | −0,08 | −0,7 (−0,8 a −0,6) |
+
+C1 e C3 passam nos dois conjuntos; C2 passa no total (a diferença na assinatura fica
+dentro da margem de −1 p.p.).
+
+**Sequencial** (% do ótimo da PD, total):
+
+| | 60 contextos | 144 (principal) | 432 contextos |
+|---|---|---|---|
+| venda única: bandido / CQL γ=0 / CQL γ=0,95 | 72,6 / 75,3 / 79,6 | 75,4 / 78,1 / 84,2 | 74,7 / 78,1 / 83,4 |
+| S1 venda única | +7,0 (0,8 a 13,1) | +8,8 | +8,6 (5,0 a 12,3) |
+| S2 venda única | +4,2 (−2,0 a 10,5), inconclusivo | +6,1 | +5,2 (2,0 a 8,4) |
+| assinatura: bandido / CQL γ=0 / CQL γ=0,95 | 84,7 / 86,6 / 95,2 | 84,4 / 86,7 / 98,3 | 84,5 / 87,1 / 95,2 |
+| S1 assinatura | +10,5 (9,4 a 11,6) | +13,9 | +10,7 (10,5 a 11,0) |
+| S2 assinatura | +8,6 (8,1 a 9,1) | +11,6 | +8,1 (6,7 a 9,5) |
+
+- **As conclusões se mantêm** com 60 e com 432 contextos: o CQL ganha do bandido na
+  venda única e empata na assinatura no estático; no sequencial, S1 e S2 têm o mesmo
+  sinal nos dois conjuntos e nas duas cobranças.
+- A única exceção estatística é S2 na venda única com 60 contextos: γ = 0,95 supera
+  γ = 0 nas três sementes (+3,8, +1,9 e +7,0 p.p.), mas com 3 sementes o IC cruza zero.
+- O CQL γ = 0,95 da assinatura fica em ~95% (contra 98,3% na rodada principal) com
+  20.000 passos; a diferença é do treino mais curto, não do número de contextos (é a
+  mesma nos dois conjuntos).
+
 ## 10. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),

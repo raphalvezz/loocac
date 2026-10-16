@@ -1,0 +1,18 @@
+{
+  "T": 12,
+  "kappa": 0.15,
+  "lambda": 0.85,
+  "cenarios": "padrao",
+  "politicas": null,
+  "modelos": [
+    "assinatura",
+    "venda_unica"
+  ],
+  "sementes": [
+    42,
+    43,
+    44
+  ],
+  "episodios_por_cenario": 200,
+  "passos_cql": 20000
+}
