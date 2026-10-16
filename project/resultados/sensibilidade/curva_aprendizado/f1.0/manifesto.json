@@ -1,0 +1,16 @@
+{
+  "simulador_versao": "1.0",
+  "sementes": [
+    42,
+    43,
+    44
+  ],
+  "n_por_cenario": 5000,
+  "passos_cql": 20000,
+  "cenarios": "padrao",
+  "fracao_dados": 1.0,
+  "politicas": null,
+  "cql_incluido": true,
+  "n_estados_avaliacao": 144,
+  "gerado_em": "2026-10-16T18:04:15+00:00"
+}

@@ -1,0 +1,43 @@
+modelo,politica,semente,tempo_treino_s,latencia_ms,gpu,explicabilidade
+venda_unica,aleatorio,42,8.597399937571026e-05,0.0074440972260466,não,trivial: sorteio uniforme na faixa (a política que coletou os dados)
+venda_unica,meio_faixa,42,2.2149997676024213e-06,0.0043662430471158,não,total: regra fixa (ponto médio da faixa)
+venda_unica,sl,42,15.816231070000867,0.8262022847197336,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+venda_unica,bandido,42,5.979599582999072,1.2658397222240738,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+venda_unica,cql,42,3165.3936096740017,0.0432259722250213,opcional (acelera o treino),baixa: rede neural; expõe só a ação e os quantis de lucro do crítico
+venda_unica,oraculo_obs,42,1.967000571312383e-06,0.2589572986077352,não,referência (usa o simulador)
+venda_unica,oraculo,42,1.99299756786786e-06,0.1344065486187496,não,referência (usa o simulador e o cenário verdadeiro)
+assinatura,aleatorio,42,0.0001703599991742,0.0077521736127689,não,trivial: sorteio uniforme na faixa (a política que coletou os dados)
+assinatura,meio_faixa,42,9.129980753641576e-07,0.0054376458441159,não,total: regra fixa (ponto médio da faixa)
+assinatura,sl,42,9.249613595002302,1.0662450138928157,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+assinatura,bandido,42,61.35187571899951,1.905677215265516,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+assinatura,cql,42,3170.2129655440003,0.0497938611311433,opcional (acelera o treino),baixa: rede neural; expõe só a ação e os quantis de lucro do crítico
+assinatura,oraculo_obs,42,1.6320009308401495e-06,0.5594183958237409,não,referência (usa o simulador)
+assinatura,oraculo,42,2.18700006371364e-06,0.2856967499964311,não,referência (usa o simulador e o cenário verdadeiro)
+venda_unica,aleatorio,43,0.0001340329999948,0.0076170486080526,não,trivial: sorteio uniforme na faixa (a política que coletou os dados)
+venda_unica,meio_faixa,43,2.005999704124406e-06,0.0041822361001524,não,total: regra fixa (ponto médio da faixa)
+venda_unica,sl,43,0.4053565249996609,1.0706076944491845,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+venda_unica,bandido,43,14.192744037000011,1.5257462777829762,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+venda_unica,cql,43,3134.9983826300013,0.041132666663341,opcional (acelera o treino),baixa: rede neural; expõe só a ação e os quantis de lucro do crítico
+venda_unica,oraculo_obs,43,2.128999767592177e-06,0.2520094097033304,não,referência (usa o simulador)
+venda_unica,oraculo,43,1.8859973351936787e-06,0.1414009861188484,não,referência (usa o simulador e o cenário verdadeiro)
+assinatura,aleatorio,43,0.0001355559979856,0.0074182291629969,não,trivial: sorteio uniforme na faixa (a política que coletou os dados)
+assinatura,meio_faixa,43,1.263000740436837e-06,0.0046604166830851,não,total: regra fixa (ponto médio da faixa)
+assinatura,sl,43,23.21771772200009,1.7805427222204646,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+assinatura,bandido,43,37.47849621600108,1.7745937777565106,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+assinatura,cql,43,3148.9695795709995,0.05934280557085,opcional (acelera o treino),baixa: rede neural; expõe só a ação e os quantis de lucro do crítico
+assinatura,oraculo_obs,43,2.540000423323363e-06,0.3341300486125773,não,referência (usa o simulador)
+assinatura,oraculo,43,2.4239998310804367e-06,0.1508618680519349,não,referência (usa o simulador e o cenário verdadeiro)
+venda_unica,aleatorio,44,0.0001376939999317,0.0144704652787671,não,trivial: sorteio uniforme na faixa (a política que coletou os dados)
+venda_unica,meio_faixa,44,2.359000063734129e-06,0.0063182013845006,não,total: regra fixa (ponto médio da faixa)
+venda_unica,sl,44,0.7905742339989956,1.1710526527824388,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+venda_unica,bandido,44,19.926251046999823,1.2875619444482962,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+venda_unica,cql,44,3228.2458986240017,0.0532839375056129,opcional (acelera o treino),baixa: rede neural; expõe só a ação e os quantis de lucro do crítico
+venda_unica,oraculo_obs,44,2.8149988793302327e-06,0.2672407013809182,não,referência (usa o simulador)
+venda_unica,oraculo,44,2.586999471532181e-06,0.1308450833524451,não,referência (usa o simulador e o cenário verdadeiro)
+assinatura,aleatorio,44,0.000130848999106,0.0070776388838567,não,trivial: sorteio uniforme na faixa (a política que coletou os dados)
+assinatura,meio_faixa,44,1.272001100005582e-06,0.0047636180574449,não,total: regra fixa (ponto médio da faixa)
+assinatura,sl,44,2.129563637001411,0.9559458263892238,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+assinatura,bandido,44,13.491879386001528,1.4971731666769807,não,alta: curva de lucro prevista por preço; importância/SHAP por feature
+assinatura,cql,44,3234.6519714550013,0.0950182708139537,opcional (acelera o treino),baixa: rede neural; expõe só a ação e os quantis de lucro do crítico
+assinatura,oraculo_obs,44,2.709999534999952e-06,0.2802726736111556,não,referência (usa o simulador)
+assinatura,oraculo,44,1.3509998098015783e-06,0.149001249989548,não,referência (usa o simulador e o cenário verdadeiro)

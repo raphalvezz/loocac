@@ -1,0 +1,127 @@
+modelo,politica,semente,tier,lucro_medio,pct_do_otimo
+venda_unica,aleatorio,42,Low Ticket,3835.250335084078,65.097862209
+venda_unica,aleatorio,42,High Ticket,909367.9643811886,81.84619439
+venda_unica,aleatorio,42,Todos,456601.6073581364,73.472028299
+venda_unica,meio_faixa,42,Low Ticket,3980.94349980008,64.761612358
+venda_unica,meio_faixa,42,High Ticket,1072578.418868858,96.342769519
+venda_unica,meio_faixa,42,Todos,538279.681184329,80.552190939
+venda_unica,sl,42,Low Ticket,3813.389257570345,57.566426636
+venda_unica,sl,42,High Ticket,1099661.5132673057,98.786428051
+venda_unica,sl,42,Todos,551737.451262438,78.176427344
+venda_unica,bandido,42,Low Ticket,4322.093100228499,66.335971731
+venda_unica,bandido,42,High Ticket,1105453.7058496,99.170106677
+venda_unica,bandido,42,Todos,554887.8994749142,82.753039204
+venda_unica,cql,42,Low Ticket,3851.968022710301,70.374527121
+venda_unica,cql,42,High Ticket,1106758.400415594,98.798686059
+venda_unica,cql,42,Todos,555305.1842191522,84.58660659
+venda_unica,oraculo_obs,42,Low Ticket,3804.811017556407,77.736423116
+venda_unica,oraculo_obs,42,High Ticket,1113464.5925086064,100.0
+venda_unica,oraculo_obs,42,Todos,558634.7017630814,88.868211558
+venda_unica,oraculo,42,Low Ticket,5799.406734472023,100.0
+venda_unica,oraculo,42,High Ticket,1113464.5925086064,100.0
+venda_unica,oraculo,42,Todos,559631.9996215391,100.0
+assinatura,aleatorio,42,Low Ticket,171288.29911263316,88.939441135
+assinatura,aleatorio,42,High Ticket,28477595.945122328,87.24278592
+assinatura,aleatorio,42,Todos,14324442.122117482,88.091113528
+assinatura,meio_faixa,42,Low Ticket,184653.79901342213,97.482119673
+assinatura,meio_faixa,42,High Ticket,32149384.046380408,97.477572039
+assinatura,meio_faixa,42,Todos,16167018.922696916,97.479845856
+assinatura,sl,42,Low Ticket,168178.25470611747,87.407244702
+assinatura,sl,42,High Ticket,32481632.34848737,98.502669447
+assinatura,sl,42,Todos,16324905.301596744,92.954957075
+assinatura,bandido,42,Low Ticket,186681.50572778267,98.638727454
+assinatura,bandido,42,High Ticket,32538168.563301045,98.698986094
+assinatura,bandido,42,Todos,16362425.034514414,98.668856774
+assinatura,cql,42,Low Ticket,184709.79372265577,97.616720769
+assinatura,cql,42,High Ticket,32841603.718413327,99.157311314
+assinatura,cql,42,Todos,16513156.756067991,98.387016042
+assinatura,oraculo_obs,42,Low Ticket,189329.60982218417,100.0
+assinatura,oraculo_obs,42,High Ticket,32964290.605587646,100.0
+assinatura,oraculo_obs,42,Todos,16576810.107704915,100.0
+assinatura,oraculo,42,Low Ticket,189329.60982218417,100.0
+assinatura,oraculo,42,High Ticket,32964290.605587646,100.0
+assinatura,oraculo,42,Todos,16576810.107704915,100.0
+venda_unica,aleatorio,43,Low Ticket,3565.608023772814,60.991839183
+venda_unica,aleatorio,43,High Ticket,903597.3036427018,82.753190935
+venda_unica,aleatorio,43,Todos,453581.4558332374,71.872515059
+venda_unica,meio_faixa,43,Low Ticket,3980.94349980008,64.761612358
+venda_unica,meio_faixa,43,High Ticket,1072578.418868858,96.342769519
+venda_unica,meio_faixa,43,Todos,538279.681184329,80.552190939
+venda_unica,sl,43,Low Ticket,4035.951680174447,58.772227535
+venda_unica,sl,43,High Ticket,1095323.646083237,97.292147633
+venda_unica,sl,43,Todos,549679.7988817055,78.032187584
+venda_unica,bandido,43,Low Ticket,4306.1018459267625,66.101149988
+venda_unica,bandido,43,High Ticket,1096285.9772476433,98.356583716
+venda_unica,bandido,43,Todos,550296.0395467851,82.228866852
+venda_unica,cql,43,Low Ticket,3854.1919307208777,70.491505232
+venda_unica,cql,43,High Ticket,1107364.5721042815,98.849619259
+venda_unica,cql,43,Todos,555609.3820175012,84.670562245
+venda_unica,oraculo_obs,43,Low Ticket,3804.811017556407,77.736423116
+venda_unica,oraculo_obs,43,High Ticket,1113464.5925086064,100.0
+venda_unica,oraculo_obs,43,Todos,558634.7017630814,88.868211558
+venda_unica,oraculo,43,Low Ticket,5799.406734472023,100.0
+venda_unica,oraculo,43,High Ticket,1113464.5925086064,100.0
+venda_unica,oraculo,43,Todos,559631.9996215391,100.0
+assinatura,aleatorio,43,Low Ticket,167739.4522756755,87.200365075
+assinatura,aleatorio,43,High Ticket,28901126.960657872,87.748110285
+assinatura,aleatorio,43,Todos,14534433.206466774,87.47423768
+assinatura,meio_faixa,43,Low Ticket,184653.79901342213,97.482119673
+assinatura,meio_faixa,43,High Ticket,32149384.046380408,97.477572039
+assinatura,meio_faixa,43,Todos,16167018.922696916,97.479845856
+assinatura,sl,43,Low Ticket,165367.39923677937,85.513804956
+assinatura,sl,43,High Ticket,32506802.54776309,98.837445807
+assinatura,sl,43,Todos,16336084.973499935,92.175625381
+assinatura,bandido,43,Low Ticket,187523.715271402,99.104430249
+assinatura,bandido,43,High Ticket,32556467.510686062,98.653827926
+assinatura,bandido,43,Todos,16371995.612978734,98.879129087
+assinatura,cql,43,Low Ticket,185183.31910233697,97.880105011
+assinatura,cql,43,High Ticket,32791678.92854654,99.075006387
+assinatura,cql,43,Todos,16488431.123824438,98.477555699
+assinatura,oraculo_obs,43,Low Ticket,189329.60982218417,100.0
+assinatura,oraculo_obs,43,High Ticket,32964290.605587646,100.0
+assinatura,oraculo_obs,43,Todos,16576810.107704915,100.0
+assinatura,oraculo,43,Low Ticket,189329.60982218417,100.0
+assinatura,oraculo,43,High Ticket,32964290.605587646,100.0
+assinatura,oraculo,43,Todos,16576810.107704915,100.0
+venda_unica,aleatorio,44,Low Ticket,3667.472092308284,63.829372117
+venda_unica,aleatorio,44,High Ticket,844671.2074423025,78.984414262
+venda_unica,aleatorio,44,Todos,424169.3397673054,71.40689319
+venda_unica,meio_faixa,44,Low Ticket,3980.94349980008,64.761612358
+venda_unica,meio_faixa,44,High Ticket,1072578.418868858,96.342769519
+venda_unica,meio_faixa,44,Todos,538279.681184329,80.552190939
+venda_unica,sl,44,Low Ticket,3827.363882050696,57.573115529
+venda_unica,sl,44,High Ticket,1092614.227650748,96.313797282
+venda_unica,sl,44,Todos,548220.7957663994,76.943456406
+venda_unica,bandido,44,Low Ticket,4327.037583098634,66.43235259
+venda_unica,bandido,44,High Ticket,1095532.6760958806,98.223187937
+venda_unica,bandido,44,Todos,549929.8568394897,82.327770263
+venda_unica,cql,44,Low Ticket,3853.967971676148,70.435551147
+venda_unica,cql,44,High Ticket,1108327.9382035828,98.96720712
+venda_unica,cql,44,Todos,556090.9530876294,84.701379133
+venda_unica,oraculo_obs,44,Low Ticket,3804.811017556407,77.736423116
+venda_unica,oraculo_obs,44,High Ticket,1113464.5925086064,100.0
+venda_unica,oraculo_obs,44,Todos,558634.7017630814,88.868211558
+venda_unica,oraculo,44,Low Ticket,5799.406734472023,100.0
+venda_unica,oraculo,44,High Ticket,1113464.5925086064,100.0
+venda_unica,oraculo,44,Todos,559631.9996215391,100.0
+assinatura,aleatorio,44,Low Ticket,168792.05526640193,89.323645545
+assinatura,aleatorio,44,High Ticket,27436996.591591872,85.581078652
+assinatura,aleatorio,44,Todos,13802894.323429136,87.452362099
+assinatura,meio_faixa,44,Low Ticket,184653.79901342213,97.482119673
+assinatura,meio_faixa,44,High Ticket,32149384.046380408,97.477572039
+assinatura,meio_faixa,44,Todos,16167018.922696916,97.479845856
+assinatura,sl,44,Low Ticket,179892.30276018666,92.709044973
+assinatura,sl,44,High Ticket,32517025.39744288,98.895310826
+assinatura,sl,44,Todos,16348458.85010153,95.8021779
+assinatura,bandido,44,Low Ticket,186852.34440072477,98.576987359
+assinatura,bandido,44,High Ticket,32584967.296764866,98.87144821
+assinatura,bandido,44,Todos,16385909.820582794,98.724217784
+assinatura,cql,44,Low Ticket,185178.6445589436,97.886996465
+assinatura,cql,44,High Ticket,32808154.93728481,99.136677161
+assinatura,cql,44,Todos,16496666.790921876,98.511836813
+assinatura,oraculo_obs,44,Low Ticket,189329.60982218417,100.0
+assinatura,oraculo_obs,44,High Ticket,32964290.605587646,100.0
+assinatura,oraculo_obs,44,Todos,16576810.107704915,100.0
+assinatura,oraculo,44,Low Ticket,189329.60982218417,100.0
+assinatura,oraculo,44,High Ticket,32964290.605587646,100.0
+assinatura,oraculo,44,Todos,16576810.107704915,100.0

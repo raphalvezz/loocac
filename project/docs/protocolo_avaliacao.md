@@ -792,6 +792,44 @@ como referência. Por tier (`robustez_s1_s2.csv`): 47 de 48 combinações
   do CQL γ = 0,95 em todas as configurações (83–95% contra 80–85%), como na rodada
   principal. Na assinatura o CQL γ = 0,95 supera o oráculo míope em todas.
 
+### 9h.3 Resultado: curva de aprendizado (3 sementes, CQL 20.000 passos, `resultados/sensibilidade/curva_aprendizado/`)
+
+Cada fração é o começo do dataset logado (já embaralhado), antes da divisão 80/20;
+os 144 contextos e a avaliação não mudam. % do ótimo, total (`resumo.csv`):
+
+| fração (linhas no total / de treino / de treino por contexto) | 10% (6.000 / 4.800 / ~33) | 25% (15.000 / 12.000 / ~83) | 50% (30.000 / 24.000 / ~167) | 100% (60.000 / 48.000 / ~333) |
+|---|---|---|---|---|
+| venda única: SL | 75,5 | 77,6 | 77,7 | 78,7 |
+| venda única: bandido | 81,6 | 81,9 | 82,4 | 82,6 |
+| venda única: CQL | 84,7 | 84,7 | 84,7 | 84,7 |
+| venda única: `cql − bandido` | +3,0 (2,4 a 3,6) | +2,8 (2,4 a 3,3) | +2,2 (1,4 a 3,0) | +2,1 (1,5 a 2,7) |
+| assinatura: SL | 92,3 | 92,9 | 93,6 | 94,1 |
+| assinatura: bandido | 98,0 | 98,5 | 98,8 | 99,0 |
+| assinatura: CQL | 98,4 | 98,5 | 98,5 | 98,5 |
+| assinatura: `cql − bandido` | +0,5 (−0,2 a 1,1) | −0,1 (−0,9 a 0,8) | −0,3 (−0,5 a −0,1) | −0,5 (−0,7 a −0,4) |
+
+Referências fixas: aleatório 72,3 / 87,7, meio da faixa 80,6 / 97,5 e teto
+observável (`oraculo_obs`) 88,9 / 100 (venda única / assinatura).
+
+- **O CQL já estabiliza com 10% dos dados** (cerca de 33 linhas de treino por
+  contexto): a variação entre 10% e 100% fica abaixo de 0,1 p.p. no total. Com
+  20.000 passos de treino o limite é o treino, não o volume de dados (com 50.000
+  passos e 100% dos dados, a rodada principal dá 84,9 / 98,9).
+- **O bandido melhora devagar até 100%** (+1,0 p.p. em cada cobrança entre 10% e
+  100%) e o **SL** mais ainda (+3,2 e +1,8 p.p.), sem estabilizar: modelos de lucro
+  que interpolam por preço precisam de mais pontos por estado que o CQL, cujo
+  pessimismo o mantém perto dos preços logados de maior lucro.
+- **As conclusões do estático valem em todas as frações:** o CQL supera o bandido na
+  venda única (IC acima de zero nas quatro), e na assinatura a diferença fica dentro
+  da margem de −1 p.p. do C2. C1 e C3 passam em todas. Com pouco dado a ordem na
+  assinatura até se inverte a favor do CQL (+0,5 com 10%), porque o bandido perde
+  mais com menos dados.
+- **Proxy de dado real necessário:** no simulador, a ordem e quase todo o
+  desempenho já aparecem com ~6.000 campanhas logadas com preço aleatório (cerca de
+  40 por combinação de cenário, região e plataforma). É um limite inferior otimista:
+  dados reais têm mais ruído, coleta não uniforme e mais variáveis, e o número vale
+  só para este espaço de estados (144 contextos, ação de uma dimensão).
+
 ## 10. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),
@@ -911,6 +949,10 @@ python avaliar_sequencial.py --agregar tmp/seq/* --saida resultados/sequencial
 | `calibracao_sequencial.py` | `calibracao_sequencial.csv` | 9f |
 | `estabilidade_shap.py` | `shap/{importancia_por_semente,estabilidade}.csv` | 9g |
 | `avaliar_politicas.py --sem-cql --politicas ucb1 thompson_tab` | `baselines_classicos/` | 9h |
+| `avaliar_sequencial.py --politicas iql_g095 --sementes 1 --semente-inicial S` (S = 42–46), depois `--agregar` com o `sequencial/` das mesmas sementes | `iql/` | 9h.5 |
+| `avaliar_politicas.py` / `avaliar_sequencial.py --cenarios reduzido\|ampliado --sementes 1 --semente-inicial S --passos-cql 20000`, depois `--agregar` | `sensibilidade/contextos/` | 9h.1 |
+| `avaliar_sequencial.py --kappa K --lambda L --politicas bandido cql_g0 cql_g095 --sementes 1 --semente-inicial S --passos-cql 20000`, depois `--agregar` | `sensibilidade/kappa_lambda/` | 9h.2 |
+| `avaliar_politicas.py --fracao-dados F --politicas aleatorio meio_faixa sl bandido cql oraculo_obs --sementes 1 --semente-inicial S --passos-cql 20000`, depois `--agregar` | `sensibilidade/curva_aprendizado/` | 9h.3 |
 | `avaliar_generalizacao.py` | `generalizacao.csv`, `generalizacao_resumo.csv` | 7 |
 | `simular_bandido_online.py` + `figura_bandido_online.py` | `bandido_online_{120,1200}/`, `docs/figuras/bandido_online_*_iniciais.png` | 8 |
 | `ablacoes_cql.py`, `diagnostico_cql.py` | `ablacoes_cql*.csv`, `diagnostico_cql.csv` | 9 |
