@@ -1,6 +1,8 @@
 """
 Bandido contextual de precificação: a referência forte do RL.
 
+(No fim do módulo, BandidoTabular: UCB1 e Thompson sampling clássicos, sem ML.)
+
 Três políticas, todas sobre o mesmo modelo de lucro(estado, preço)
 (LightGBM com alvo em log, ver politicas.RegressorGrade):
 
@@ -18,10 +20,12 @@ via atualizar() e reajustam o modelo a cada lote, como um produto real faria
 (ex.: reajuste diário). A simulação está em simular_bandido_online.py.
 """
 
+import zlib
+
 import numpy as np
 import pandas as pd
 
-from politicas import ALVO, RegressorGrade
+from politicas import ALVO, FRACAO_TREINO, Politica, RegressorGrade, chaves
 
 
 class BandidoLGBM(RegressorGrade):
@@ -113,3 +117,76 @@ class BandidoThompson(BandidoOnline):
 
     def prever_lucro(self, estados, precos):
         return np.mean([m.prever_lucro(estados, precos) for m in self.modelos], axis=0)
+
+
+class BandidoTabular(Politica):
+    """Bandido clássico, sem aprendizado de máquina: uma tabela por estado observável.
+
+    Cada estado observável (região, plataforma, Tier, orçamento e, na assinatura, a
+    memória) tem K braços: preços igualmente espaçados em log na faixa observável do
+    estado. Cada linha logada vai para o braço mais próximo do seu preço, e a tabela
+    guarda contagem, média e variância do lucro por braço. O lucro entra dividido pela
+    média do estado (escala comparável entre estados de centenas e de milhões).
+
+      regra='ucb1'      índice média + c·sqrt(2 ln N / n) (Auer et al., 2002)
+      regra='thompson'  amostra de N(média, variância/n) por braço (Thompson
+                        sampling gaussiano), com semente fixa por estado
+
+    Treinado nos dados logados e avaliado sem novas interações, como as demais
+    políticas offline. Um braço sem dados (n = 0; n ≤ 1 no Thompson) recebe índice
+    infinito em operação ("teste primeiro o que nunca testou"), mas offline não há
+    como testá-lo: aqui ele fica de fora. UCB1 e Thompson foram feitos para aprender em operação; com a
+    coleta uniforme (contagens parecidas em todos os braços) os dois ficam próximos
+    da média empírica gulosa.
+    """
+    treinavel = True
+    explicabilidade = 'total: tabela de lucro médio por estado e faixa de preço'
+
+    def __init__(self, modelo, cenarios, regra='ucb1', n_bracos=10, c=1.0):
+        super().__init__(modelo, cenarios)
+        if regra not in ('ucb1', 'thompson'):
+            raise ValueError(regra)
+        self.regra, self.n_bracos, self.c = regra, n_bracos, c
+        self.nome = 'ucb1' if regra == 'ucb1' else 'thompson_tab'
+
+    def _chaves(self, estados):
+        # texto canônico: o mesmo estado tem a mesma chave venha de numpy ou de Python
+        return [repr(tuple(str(x) for x in (r, p) + tuple(k)))
+                for r, p, k in zip(estados['Regiao'], estados['Plataforma'], chaves(self.modelo, estados))]
+
+    def _bracos(self, estados):
+        return np.stack([np.geomspace(lo, hi, self.n_bracos) for lo, hi in self.faixas(estados)])
+
+    def treinar(self, dados, semente, fracao_treino=FRACAO_TREINO):
+        self.semente = semente
+        treino = dados.iloc[: int(len(dados) * fracao_treino)]
+        bracos = self._bracos(treino)
+        braco = np.abs(np.log(bracos) - np.log(treino['Preco_Amostra'].to_numpy())[:, None]).argmin(axis=1)
+        lucro = treino[ALVO[self.modelo]].to_numpy(dtype=float)
+        df = pd.DataFrame({'estado': self._chaves(treino), 'braco': braco, 'lucro': lucro})
+        df['lucro'] /= df.groupby('estado')['lucro'].transform('mean')
+        self.tabela = {e: g.groupby('braco')['lucro'].agg(['count', 'mean', 'var']).reindex(range(self.n_bracos))
+                       for e, g in df.groupby('estado')}
+        return self
+
+    def precos(self, estados):
+        bracos = self._bracos(estados)
+        out = np.empty(len(estados))
+        self.estados_sem_dados = 0
+        for i, chave in enumerate(self._chaves(estados)):
+            t = self.tabela.get(chave)
+            if t is None:  # estado nunca logado: meio da faixa
+                self.estados_sem_dados += 1
+                out[i] = bracos[i, self.n_bracos // 2]
+                continue
+            n = t['count'].fillna(0).to_numpy()
+            media = t['mean'].fillna(0).to_numpy()
+            if self.regra == 'ucb1':
+                indice = np.where(n > 0, media + self.c * np.sqrt(2 * np.log(max(n.sum(), 1)) / np.maximum(n, 1)),
+                                  -np.inf)
+            else:
+                rng = np.random.default_rng([self.semente, zlib.crc32(chave.encode())])
+                var = t['var'].fillna(t['var'].mean()).to_numpy()
+                indice = np.where(n > 1, rng.normal(media, np.sqrt(var / np.maximum(n, 1))), -np.inf)
+            out[i] = bracos[i, int(np.argmax(indice))]
+        return out

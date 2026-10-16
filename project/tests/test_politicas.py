@@ -94,3 +94,18 @@ def test_faixa_fora_do_catalogo():
     # orçamento que não existe nos cenários: usa o orçamento mais próximo (log) do mesmo Tier
     assert v.faixa_da_chave(('Low Ticket', 1500.0)) == (20.0, 100.0)
     assert v.faixa_da_chave(('High Ticket', 3000.0)) == (500.0, 1000.0)
+
+
+@pytest.mark.parametrize("regra", ['ucb1', 'thompson'])
+def test_bandido_tabular_usa_a_tabela(estados, regra):
+    """Todo estado de avaliação acha a sua linha na tabela (chaves de treino e de
+    avaliação iguais) e a escolha depende dos dados (muda com a semente)."""
+    precos = []
+    for semente in (42, 43):
+        b = ban.BandidoTabular('venda_unica', C, regra).treinar(sim.gerar_dados(C, 1000, semente), semente)
+        precos.append(av.consultar(b, estados))
+        assert b.estados_sem_dados == 0
+    assert not np.allclose(precos[0], precos[1])
+    # Thompson é reprodutível com a mesma semente
+    b = ban.BandidoTabular('venda_unica', C, regra).treinar(sim.gerar_dados(C, 1000, 42), 42)
+    assert np.allclose(av.consultar(b, estados), precos[0])

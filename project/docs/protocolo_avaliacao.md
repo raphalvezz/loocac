@@ -25,6 +25,33 @@ são reportados.
 - Treino: primeiros 80% das linhas (embaralhadas). Os 20% restantes não são usados
   na avaliação, que é feita no simulador.
 
+### Política geradora dos dados (auditoria de 2026-10-15)
+
+Conferido no código: **uma única política de coleta**, sem mistura de políticas.
+`Generator_NEW.py` chama `simulador.gerar_dados(CENARIOS, 5000, SEED)`, e o mesmo
+gerador é usado por `avaliar_politicas.py` (uma semente por rodada). Cada linha é
+sorteada de forma independente:
+1. cenário: exatamente 5.000 linhas por cenário (12 cenários, 60.000 linhas);
+2. região e plataforma: uniformes e independentes (4 × 3 combinações);
+3. preço: **uniforme contínuo em [Price_Min, Price_Max] do cenário**, sem depender
+   de nada mais (nem de resultados anteriores: a coleta não aprende);
+4. lucro (venda única) e LTV (assinatura): duas amostras independentes do ruído
+   lognormal no mesmo preço; a mesma linha serve aos dois modelos de cobrança.
+
+Conferido nos dados (semente 42): posição relativa do preço na faixa com média
+0,498 e desvio 0,287 (uniforme: 0,5 e 0,289), nenhum preço fora da faixa.
+Propensão conhecida: μ(p | cenário) = 1 / (Price_Max − Price_Min), usada pelo WIS
+(seção 9d). No ambiente sequencial (`sequencial.gerar_dados`), a mesma política
+decide cada período de forma independente da reputação.
+
+O que o **BC** aprende disso: o BC treina nos primeiros 80% com perda quadrática na
+ação (escala [-1, 1] da faixa observável), então aprende a **ação média logada em
+cada estado**. Conferido: a ação do BC fica a 0,025, em média, da ação média logada
+na chave do estado. Nos estados que juntam dois cenários (venda única, Low Ticket),
+essa média mistura duas faixas de preço uniformes. O BC é, portanto, a referência
+"imitar a coleta", não a imitação de um especialista: ele só pode ser tão bom quanto
+o preço médio aleatório.
+
 ## 3. Grade de avaliação e métrica
 
 - Estados: cada cenário × região × plataforma = **144 estados** (`simulador.contextos`).
@@ -83,6 +110,65 @@ resultados.
   Conclusão: "A > B" se o IC 95% da diferença estiver todo acima de 0; "A < B" se
   todo abaixo; senão, "inconclusivo".
 
+## 5b. Extensão para 10 sementes (registrada em 2026-10-14, antes de rodar)
+
+As sementes 47–51 são acrescentadas às 42–46 na comparação principal (todas as
+abordagens, CQL com 50.000 passos) e no ambiente sequencial (duas cobranças, CQL
+com 50.000 passos). Nada mais muda: mesmos dados por semente, mesmas políticas,
+mesmos critérios. As tabelas finais passam a usar as 10 sementes; as de 5 sementes
+ficam como estão em `resultados/final_5_sementes/` e no histórico do git, para mostrar
+se alguma conclusão (C1–C3, S1–S2) muda com a amostra maior. Se mudar, a conclusão
+reportada é a de 10 sementes e a mudança fica registrada aqui.
+
+### Por que 5 (e depois 10) sementes — nota de 2026-10-15
+
+As 5 sementes iniciais foram uma **escolha prática** (tempo de CPU: cada semente da
+comparação principal leva ~2,5 h só nos dois CQL), **não** o resultado de uma
+análise formal de poder feita antes. A extensão para 10 sementes (seção 5b) também
+foi decidida por custo. A análise de poder abaixo é **retrospectiva**: usa o
+desvio-padrão entre sementes observado (`analise_estatistica.py`,
+`resultados/estatistica/poder.csv`), teste t pareado unilateral, α = 2,5%, poder 80%.
+
+| comparação (total) | dp entre sementes (p.p.) | menor efeito detectável, 5 sementes | idem, 10 sementes | efeito observado (distância ao limiar) |
+|---|---|---|---|---|
+| C1 venda / assinatura | 1,47 / 1,17 | 2,4 / 1,9 | 1,5 / 1,2 | 13,6 / 10,9 |
+| C2 venda / assinatura | 0,13 / 0,10 | 0,22 / 0,16 | 0,13 / 0,10 | 3,2 / 0,92 |
+| C3 venda / assinatura | 0,08 / 0,04 | 0,13 / 0,07 | 0,08 / 0,04 | 4,4 / 1,5 |
+| S1 venda / assinatura | 1,30 / 0,84 | 2,2 / 1,4 | 1,3 / 0,83 | 8,8 / 13,9 |
+| S2 venda / assinatura | 1,42 / 0,52 | 2,4 / 0,87 | 1,4 / 0,52 | 6,1 / 11,6 |
+
+Leitura: todos os efeitos primários ficam muito acima do menor efeito detectável já
+com 5 sementes, então a amostra bastou **para estas hipóteses**. Não basta para
+diferenças finas: detectar 0,5 p.p. em S1 na venda única exigiria ~55 sementes. A
+limitação fica registrada: o número de sementes não foi escolhido por poder.
+
+### Correção para múltiplas comparações (2026-10-15)
+
+`analise_estatistica.py` refaz C1–C3 e S1–S2 como testes t pareados unilaterais
+(α = 2,5%, o mesmo que o IC 95% bilateral) e aplica Holm e Bonferroni em duas
+famílias: as 10 hipóteses primárias (5 critérios × 2 cobranças, no total) e as 30
+com os recortes por tier (`resultados/estatistica/testes.csv`).
+- Todas as 10 primárias são rejeitadas com Holm e com Bonferroni (maior p = 1,3×10⁻⁷,
+  S2 venda única; limiar de Bonferroni 0,0025).
+- Nas 30, 29 são rejeitadas com as duas correções. A única que não passa é a que já
+  não passava sem correção: C2 na assinatura, Low Ticket (p = 0,0252). **As
+  conclusões não mudam.**
+
+### Margem de −1 p.p. do C2 (2026-10-15)
+
+A margem foi fixada **por bom senso** antes dos resultados, não derivada de um
+cálculo. Para dar escala a ela:
+- A variação entre sementes de `cql − bandido` é de 0,10–0,13 p.p. (dp), então 1 p.p.
+  não é uma margem "de ruído": é uma diferença de importância prática.
+- A vantagem do bandido sobre a melhor regra fixa (`meio_faixa`) é de 2,15 p.p. na
+  venda única e 1,55 p.p. na assinatura. Pela regra usual de não-inferioridade
+  (preservar ao menos 50% do efeito do comparador sobre a referência), a margem seria
+  −1,07 p.p. na venda única e −0,77 p.p. na assinatura. A margem de −1 p.p. é, então,
+  mais frouxa que essa regra na assinatura.
+- Refeito com a margem derivada (−0,77 p.p. na assinatura; −0,76 a −1,31 p.p. por
+  tier), C2 dá o mesmo resultado em todos os recortes: passa no total das duas
+  cobranças e em todos os tiers, exceto o Low Ticket da assinatura, que já falhava.
+
 ## 6. Critérios de sucesso (confirmados em 2026-10-09)
 
 Avaliados no total (Todos) e por tier, separadamente para venda única e assinatura:
@@ -97,7 +183,8 @@ suficiente neste problema. É um resultado válido e deve ser reportado como tal
 
 ### Resultado final (2026-10-11, 5 sementes, CQL com 50.000 passos)
 
-Referência para o capítulo 5: `resultados/final_5_sementes/`. % do ótimo:
+Rodada de 5 sementes; a referência para o capítulo 5 passou a ser a de 10 sementes
+(abaixo, `resultados/final_10_sementes/`). % do ótimo:
 
 | política | venda Low | venda High | venda Todos | assin. Low | assin. High | assin. Todos |
 |---|---|---|---|---|---|---|
@@ -117,6 +204,27 @@ Referência para o capítulo 5: `resultados/final_5_sementes/`. % do ótimo:
 - Leitura: no problema estático o CQL empata com o bandido (assinatura) ou o supera
   por pouco (venda única, +2,3 p.p., todo no Low Ticket). A vantagem clara do RL
   aparece no ambiente sequencial (seção 9b).
+
+### Resultado com 10 sementes (2026-10-15, sementes 42–51, `resultados/final_10_sementes/`)
+
+| política | venda Low | venda High | venda Todos | assin. Low | assin. High | assin. Todos |
+|---|---|---|---|---|---|---|
+| aleatorio | 60,7 | 82,0 | 71,3 | 88,3 | 87,8 | 88,0 |
+| meio_faixa | 64,8 | 96,3 | 80,6 | 97,5 | 97,5 | 97,5 |
+| sl | 58,5 | 98,4 | 78,4 | 88,9 | 98,9 | 93,9 |
+| bandido | 66,4 | 99,0 | 82,7 | 99,1 | 99,0 | 99,0 |
+| bc | 69,0 | 96,6 | 82,8 | 97,7 | 97,8 | 97,7 |
+| **cql** | **70,4** | **99,4** | **84,9** | 98,2 | **99,7** | 98,9 |
+
+- **C1 e C3** continuam passando em todos os recortes.
+- **C2** passa no total dos dois modelos (venda única +2,2 p.p., IC 2,1 a 2,3;
+  assinatura −0,08, IC −0,15 a −0,01) e em todos os tiers, exceto o Low Ticket da
+  assinatura, que segue falhando por uma margem desprezível: −0,88 p.p., limite
+  inferior −1,0003 (com 5 sementes era −1,06).
+- Com 10 sementes os intervalos ficam mais estreitos e duas diferenças passam a ser
+  significativas: na venda única, High Ticket, o CQL supera o bandido (+0,42, IC 0,03
+  a 0,81); na assinatura, no total, o bandido supera o CQL por 0,08 p.p. (dentro da
+  margem de não-inferioridade). **Nenhuma conclusão muda.**
 
 ## 7. Generalização (fora da distribuição de treino)
 
@@ -239,6 +347,44 @@ Comparações pareadas (p.p., IC 95%):
   simulador; κ e λ são hipóteses). A rodada preliminar está em
   `resultados/sequencial_preliminar/`.
 
+### Resultado com 10 sementes (2026-10-15, sementes 42–51, `resultados/sequencial/`)
+
+A pasta `resultados/sequencial/` passa a ter as 10 sementes (a versão de 5 sementes
+está no histórico do git, commit `2e55bdf`). % do ótimo da programação dinâmica:
+
+| política | venda Low | venda High | venda Todos | assin. Low | assin. High | assin. Todos |
+|---|---|---|---|---|---|---|
+| sl | 63,2 | 83,1 | 73,1 | 93,5 | 85,6 | 89,5 |
+| bandido | 60,9 | 90,0 | 75,4 | 84,4 | 84,4 | 84,4 |
+| bc | 64,2 | 87,0 | 75,6 | 81,3 | 81,4 | 81,3 |
+| cql_g0 | 64,9 | 91,4 | 78,1 | 86,8 | 86,5 | 86,7 |
+| **cql_g095** | **71,2** | **97,3** | **84,2** | **98,4** | **98,1** | **98,3** |
+| oraculo_miope | 90,5 | 89,0 | 89,7 | 82,8 | 82,5 | 82,7 |
+
+| | venda única | assinatura |
+|---|---|---|
+| **S1** `cql_g095 − bandido` | +8,8 (7,9 a 9,7) | +13,9 (13,3 a 14,5) |
+| **S2** `cql_g095 − cql_g0` | +6,1 (5,1 a 7,1) | +11,6 (11,3 a 12,0) |
+
+S1 e S2 continuam confirmados nas duas cobranças, no total e em cada tier (todos os
+limites inferiores acima de zero; o menor é +3,9 p.p., S2 na venda única, Low
+Ticket). Os números mudam menos de 0,5 p.p. em relação às 5 sementes. **Nenhuma
+conclusão muda.**
+
+### Distância exata ao ótimo da programação dinâmica (10 sementes)
+
+`resultados/estatistica/distancia_oraculo.csv` (p.p. abaixo de 100%, média [IC 95%],
+mínimo–máximo entre as sementes):
+
+| CQL γ = 0,95 | Low Ticket | High Ticket | Todos |
+|---|---|---|---|
+| venda única | 28,8 [26,6; 31,1], 22,6–33,7 | 2,7 [2,0; 3,5], 1,3–4,3 | **15,8** [14,9; 16,7], 13,2–17,7 |
+| assinatura | 1,6 [1,3; 1,8], 1,0–2,0 | 1,9 [1,6; 2,1], 1,5–2,6 | **1,7** [1,5; 1,9], 1,3–2,3 |
+
+Para comparação, no total: oráculo míope a 10,3 p.p. (venda) e 17,3 p.p.
+(assinatura); bandido a 24,6 e 15,6 p.p. Na venda única quase toda a distância do
+CQL está no Low Ticket, onde o estado não identifica o cenário.
+
 ### Resultado preliminar do ambiente sequencial (2026-10-10, venda única, 3 sementes, 20.000 passos)
 
 | política | Low Ticket | High Ticket | Todos |
@@ -313,6 +459,377 @@ Comparações pareadas (p.p., IC 95%):
   extrapola a curva de lucro aprendida com a região como variável, e a região do
   destino é uma categoria nunca vista.
 
+## 9d. Seleção de checkpoint sem o simulador: FQE contra WIS (2026-10-15)
+
+`avaliar_selecao_ope.py`: um treino de 50.000 passos do CQL por semente e cobrança
+(3 sementes), com checkpoints a cada 5.000 passos (10 por treino). Cada checkpoint
+recebe três notas: o % do ótimo verdadeiro (simulador), o estimado pelo FQE (seção
+9b) e o estimado por **importance sampling ponderado (WIS)** com núcleo gaussiano
+(h = 0,1 na escala da ação) e as propensões conhecidas da coleta (preço uniforme na
+faixa do cenário). Os dois estimadores usam só os 20% de dados que o agente não viu.
+
+| | Spearman com o verdadeiro | arrependimento (p.p.) | escolhe o mesmo checkpoint |
+|---|---|---|---|
+| FQE, venda única | −0,49 a −0,27 | 1,0 a 1,6 | — |
+| WIS, venda única | 0,68 a 0,83 | 0,0 a 0,17 | — |
+| FQE, assinatura | 0,22 a 0,26 | 0,22 a 0,30 | — |
+| WIS, assinatura | 0,90 a 0,98 | 0,01 a 0,13 | — |
+| FQE × WIS | −0,37 a 0,42 | — | 0 de 6 |
+
+Arrependimento = % do ótimo do melhor checkpoint verdadeiro − % do checkpoint
+escolhido pelo estimador (`resultados/selecao_ope/resumo.csv`).
+
+- **O WIS ordena os checkpoints quase como o simulador** e escolhe um que fica a
+  no máximo 0,17 p.p. do melhor. Superestima o nível em ~2–3 p.p. na venda única
+  (ESS de ~15 linhas por contexto), mas o nível não importa para escolher.
+- **O FQE não serve para escolher checkpoint aqui:** na venda única a ordem sai
+  invertida (Spearman negativo) e ele escolhe sempre o último checkpoint, que é dos
+  piores (arrependimento de até 1,6 p.p.); na assinatura a ordem é quase aleatória.
+  Os dois estimadores nunca escolheram o mesmo checkpoint.
+- Por que o WIS vai bem: a política de coleta é conhecida e cobre toda a faixa
+  (preço uniforme), exatamente a condição em que importance sampling funciona. O FQE
+  depende de um modelo Q aprendido em ~10 mil linhas, cujo erro é maior que as
+  diferenças (décimos de p.p.) entre checkpoints. Com dados reais de uma coleta
+  menos aleatória, o WIS perderia essa vantagem (pesos maiores, ESS menor).
+- Consequência: um sistema sem simulador poderia escolher o checkpoint do CQL pelo
+  WIS sem perda relevante; o resultado da seção 9b (FQE acerta o nível agregado de
+  um modelo pronto) não se estende à comparação fina entre checkpoints.
+
+## 9c. Risco (VaR/CVaR 5%) de cada método (2026-10-14)
+
+SL e bandido ganharam regressão quantílica (`treinar_quantis.py`: LightGBM com
+`objective='quantile'` nos quantis 1%, 2,5%, 5%, 10%, 50% e 90%, mesmas features e
+escala do alvo). Assim os três métodos com modelo de lucro têm um VaR/CVaR 5%
+próprio: crítico quantílico (CQL) ou regressão quantílica (SL, bandido); o BC não
+tem. A API devolve esse risco em `var_5_metodo`/`cvar_5_metodo`/`fonte_risco_metodo`,
+além da avaliação comum pelo crítico (`var_5_percent`/`cvar_5_percent`).
+
+`avaliar_risco.py` compara cada estimativa com o valor exato do simulador (o ruído é
+lognormal conhecido: VaR exato = E(p)·exp(−σ²/2 + σ·z₀,₀₅)), no preço recomendado e
+numa grade de 5 preços por estado. Erro em % do lucro ótimo do estado; cobertura =
+probabilidade real de o lucro ficar abaixo do VaR estimado (ideal 5%).
+Modelos da verificação em máquina limpa (`resultados/risco.csv`):
+
+| | erro abs. VaR (grade) | cobertura (grade) | erro abs. VaR (preço recomendado) | cobertura (preço rec.) |
+|---|---|---|---|---|
+| CQL venda única | 175% | 9,6% | 105% | 6,6% |
+| SL venda única | 5,4% | 6,8% | 25,5% | 20,1% |
+| Bandido venda única | 5,1% | 6,7% | 27,7% | 19,0% |
+| CQL assinatura | 73% | 48,8% | 83% | 55,1% |
+| SL assinatura | 2,6% | 6,9% | 2,1% | 5,2% |
+| Bandido assinatura | 3,0% | 6,9% | 2,7% | 4,0% |
+
+- A regressão quantílica é bem calibrada: erro de 2–6% do lucro ótimo e cobertura
+  de 5–7% na grade; no conjunto de teste os quantis 1%, 5%, 50% e 90% cobrem 1,1%,
+  5,0–5,4%, 50% e 90–92%.
+- O crítico do CQL **não** serve como medida de risco: na venda única subestima o VaR
+  (fica negativo no Low Ticket) e na assinatura o superestima (o lucro fica abaixo
+  do "VaR 5%" em ~50% dos casos). O termo conservador do CQL empurra os valores Q
+  para baixo fora dos dados e a escala da recompensa distorce a cauda; o crítico
+  serve para escolher o preço, não para medir a distribuição do lucro.
+- No preço recomendado da venda única, Low Ticket, SL e bandido também erram (~45%):
+  ali o estado não identifica o cenário, e o quantil aprendido é o da mistura dos
+  cenários que dividem a chave (limitação de observabilidade, seção 11). No High
+  Ticket o erro é de 5–6%.
+- Consequência para a API: a coluna "VaR 5% (RL)" da avaliação comum herda esses
+  erros; o risco próprio do SL e do bandido é o mais confiável.
+
+## 9e. O CQL sai do suporte dos dados? (2026-10-15)
+
+`avaliar_ood.py` mede, nas recomendações do CQL, a distância aos dados de treino
+(`resultados/ood/`). Verificação empírica, não prova.
+
+**Problema estático** (`cql_<modelo>`, 144 estados): nenhuma ação fora da faixa
+observável do estado (0%), nenhuma saturada na borda (0%), e a ação escolhida tem em
+mediana 15–18 linhas de treino do mesmo contexto a menos de 0,05 (a densidade normal
+da coleta uniforme). Na venda única, Low Ticket, 33% dos preços caem fora da faixa
+do cenário verdadeiro; o bandido, o SL e o próprio oráculo observável fazem
+exatamente o mesmo (33,3%): é o limite de observabilidade (seção 11), não
+extrapolação do CQL. Com a ação na faixa do estado (seção 12), o CQL não tem como
+escolher preços sem dado.
+
+**Ambiente sequencial** (`cql_seq_<modelo>`, 144 contextos × 12 períodos): a ação
+continua dentro da faixa (0% fora, ≤ 0,7% na borda), mas **o estado sai do suporte**:
+o CQL que planeja leva a reputação a valores que a coleta aleatória quase não produz.
+
+| | venda única | assinatura |
+|---|---|---|
+| reputação fora do intervalo logado do mesmo contexto e período | 44,9% | 87,0% |
+| idem, juntando todos os contextos no período | 5,2% | 6,0% |
+| acima do percentil 99 logado no período | 6,9% | 43,9% |
+| distância à reputação logada mais próxima (mediana / p95) | 0,02 / 0,27 | 0,12 / 0,39 |
+
+Na assinatura o agente passa quase metade da campanha numa faixa de reputação
+(> p99 dos dados) com pouquíssimas observações, e ainda assim chega a 98,6% do
+ótimo: a rede generaliza bem em ρ, que entra de forma suave no lucro. É o tipo de
+extrapolação que o termo conservador do CQL controla na **ação**, mas não no
+**estado**; num mercado real, a resposta da demanda a uma reputação nunca observada
+poderia ser diferente da simulada. Registrado em `docs/limitacoes.md`.
+
+**Rota da API com os modelos de produção** (`cql_seq_*`: 83,8% e 98,6% do ótimo
+da programação dinâmica nos 144 contextos): uma campanha de 12 períodos (High
+Ticket, orçamento 50 mil, Europe/Instagram) feita pela API dá 98,8% (venda única) e
+98,1% (assinatura) do ótimo daquele contexto; o preço começa em 0,79× e 0,62× o
+preço míope e sobe ao longo da campanha; a 13ª chamada recebe 409.
+
+## 9f. Calibração de κ e λ (reconstituída em 2026-10-15)
+
+O histórico do git mostra que `sequencial.py` entrou com κ = 0,15 e λ = 0,85 no
+commit `017e404` (2026-10-10), antes de qualquer política ser treinada nesse
+ambiente. Não há registro de uma busca sistemática: a calibração foi **por inspeção
+e tentativa**, com duas configurações testadas (κ = 0,5 e depois κ = 0,15; o valor de
+λ da primeira tentativa não ficou registrado) e um único alvo: que planejar valesse
+cerca de 10 p.p. (oráculo míope perto de 90% do ótimo), um efeito intertemporal
+visível mas não dominante. Não houve dado real por trás dos valores.
+
+`calibracao_sequencial.py` (`resultados/calibracao_sequencial.csv`) mostra onde a
+escolha fica numa grade, sem treinar políticas:
+
+| κ | λ | míope, venda (%) | míope, assinatura (%) | períodos da PD no piso, venda / assin. (%) |
+|---|---|---|---|---|
+| 0,05 | 0,85 | 99,0 | 97,9 | 0 / 0 |
+| 0,10 | 0,85 | 95,7 | 91,1 | 0,5 / 28 |
+| **0,15** | **0,85** | **89,7** | **82,7** | **15 / 46** |
+| 0,15 | 0,75 / 0,95 | 85,0 / 92,8 | 76,7 / 86,9 | 23 / 53 e 8 / 39 |
+| 0,25 | 0,85 | 74,4 | 67,0 | 37 / 55 |
+| 0,50 | 0,85 | 54,6 | 50,7 | 32 / 37 |
+
+- O valor de planejar cresce com κ e cai com λ; com κ = 0,05 o efeito some (o míope
+  fica a 1–2 p.p. do ótimo) e não haveria o que o RL ganhar.
+- **Correção de um registro:** o comentário original dizia que κ = 0,5 deixava "a PD
+  presa no preço mínimo". A grade não sustenta isso como diferença entre as duas
+  configurações: com a calibração usada, a política ótima também começa no piso da
+  faixa em 94% (venda) e 100% (assinatura) dos contextos e passa 15% e 46% dos
+  períodos nele; com κ = 0,5, 32% e 37%. O que de fato separa as duas é o valor de
+  planejar (míope a 89,7% contra 54,6%). O comentário em `sequencial.py` foi
+  corrigido; os valores não mudaram.
+- Como a PD passa parte da campanha no piso, o preço mínimo da faixa é uma restrição
+  ativa do ótimo: o efeito intertemporal empurra o preço para baixo até onde a faixa
+  deixa. Isso vale para todas as políticas e não muda a comparação, mas faz parte da
+  hipótese do ambiente.
+
+## 9g. Estabilidade do SHAP do SL entre sementes (2026-10-15)
+
+`estabilidade_shap.py` (`resultados/shap/`): para as sementes 42–46, gera os dados,
+treina o SL e calcula o SHAP em 2.000 linhas do teste, como o `SL_FINAL`.
+
+| venda única | participação média na importância | CV entre sementes | posição (mín–máx) |
+|---|---|---|---|
+| Orçamento | 52% | 0,06 | 1–1 |
+| Preço | 27% | 0,11 | 2–2 |
+| Região | 11% | 0,02 | 3–3 |
+| Plataforma | 8% | 0,03 | 4–4 |
+| Tier | 2,5% | 0,08 | 5–5 |
+
+| assinatura | participação | CV | posição |
+|---|---|---|---|
+| Orçamento | 65% | 0,03 | 1–1 |
+| Preço médio ofertado (90 d) | 12% | 0,05 | 2–2 |
+| Preço | 9% | 0,15 | 3–3 |
+| Região | 7% | 0,03 | 4–4 |
+| Plataforma | 5% | 0,03 | 5–5 |
+| Tier | 2% | 0,09 | 6–6 |
+
+- A ordem das variáveis é idêntica nas 5 sementes (Kendall τ = 1,0 entre todos os
+  pares); por coluna do one-hot, τ médio de 0,91 (venda) e 0,96 (assinatura), com as
+  mesmas 3 colunas no topo em todas. A participação de cada variável varia de 2% a
+  15% (CV) entre sementes.
+- Leitura para a monografia: o SHAP explica o **nível** do lucro previsto, e o
+  orçamento domina porque separa cenários de escalas de lucro muito diferentes; ele
+  não mede o que decide o **preço** dentro de um estado (para isso, a curva de lucro
+  por preço do próprio SL é a explicação adequada).
+
+## 9h. Robustez e baselines adicionais (registrado em 2026-10-15, antes de rodar)
+
+Análises exploratórias de sensibilidade (não substituem a comparação principal nem
+o sequencial de 10 sementes). Para caber no tempo de CPU, as de sensibilidade usam
+**3 sementes (42–44) e CQL com 20.000 passos** (na rodada preliminar do sequencial,
+20.000 passos deram 83,8% contra 84,5% com 50.000, com as mesmas conclusões).
+O critério é qualitativo: a conclusão se mantém se o sinal de `cql − bandido`
+(estático) e de S1/S2 (sequencial) for o mesmo das rodadas principais, com IC 95%
+do mesmo lado de zero.
+
+1. **Número de contextos** (`cenarios_sensibilidade.py`): conjunto reduzido (5
+   cenários, 60 contextos) e ampliado (36 cenários, 432 contextos; variantes dos 12
+   originais com orçamento × 1,7 / × 0,6 e faixa × 1,2 / × 0,8). Estático com
+   aleatório, meio da faixa, bandido e CQL; sequencial com bandido, CQL γ = 0 e
+   γ = 0,95. 5.000 linhas (estático) ou 200 campanhas (sequencial) por cenário.
+2. **κ e λ** (uma variável por vez): κ = 0,105 e 0,195 (±30%) com λ = 0,85; λ = 0,75
+   e 0,95 com κ = 0,15 (±30% em λ passaria de 1, o que tiraria o conflito entre hoje
+   e amanhã). Sequencial com bandido, CQL γ = 0 e γ = 0,95; S1 e S2 por combinação.
+3. **Curva de aprendizado**: 10%, 25%, 50% e 100% do dataset logado (6.000 a 60.000
+   linhas) no problema estático, com aleatório, meio da faixa, SL, bandido e CQL.
+   Mede a partir de que volume o desempenho estabiliza.
+4. **Bandido clássico sem ML** (`bandido.BandidoTabular`): UCB1 e Thompson sampling
+   gaussiano numa tabela por estado observável com 10 braços de preço. Entra na
+   comparação principal como baseline adicional, nas 10 sementes (42–51).
+5. **IQL contra CQL** (`politicas.IQL`): no sequencial com γ = 0,95, o mesmo
+   protocolo do `cql_g095` (50.000 passos, mesma seleção de checkpoint), sementes
+   42–46, pareado com o `cql_g095` das mesmas sementes. Hiperparâmetros do artigo
+   original do IQL (expectil 0,7, temperatura 3), sem ajuste.
+
+### 9h.4 Resultado: bandido clássico sem ML (10 sementes, `resultados/baselines_classicos/`)
+
+| % do ótimo, total | venda única | assinatura |
+|---|---|---|
+| meio da faixa | 80,6 | 97,5 |
+| **UCB1** (tabela, 10 braços) | 72,6 | 83,9 |
+| **Thompson** (tabela, 10 braços) | 82,2 | 98,1 |
+| bandido (LightGBM) | 82,7 | 99,0 |
+| CQL | 84,9 | 98,9 |
+
+- **Thompson** fica perto do bandido com LightGBM (−0,5 p.p. na venda única, −0,9 na
+  assinatura; IC 95% abaixo de zero nos dois) e acima da regra fixa. É o resultado
+  esperado de um bandido sem modelo quando a coleta cobre bem cada estado: a tabela
+  só perde por não generalizar entre estados nem entre preços vizinhos.
+- **UCB1 offline fica abaixo da regra fixa** (−7,9 e −13,5 p.p.). O bônus de
+  exploração (Auer et al., 2002) favorece os braços com menos dados; em operação isso
+  compra informação, mas offline não há nova informação a comprar, e a política acaba
+  escolhendo os preços menos observados. É um exemplo direto de por que o RL offline
+  usa pessimismo (CQL, IQL) e não otimismo.
+- O CQL supera os dois (+2,7 e +12,3 p.p. sobre Thompson e UCB1 na venda única).
+- **Correção antes do resultado:** a primeira rodada deu valores idênticos em todas
+  as sementes. A causa era um erro de chave (texto de `numpy.str_` no treino contra
+  `str` na avaliação), que fazia toda consulta cair no braço do meio. Corrigido, com
+  teste (`tests/test_politicas.py::test_bandido_tabular_usa_a_tabela`); braços sem
+  dados também passaram a ser excluídos offline (em operação eles teriam índice
+  infinito). Os números acima são da rodada corrigida.
+
+### 9h.5 Resultado: IQL contra CQL no ambiente sequencial (5 sementes, `resultados/iql/`)
+
+Mesmo protocolo do `cql_g095` (γ = 0,95, recompensa por contexto, até 50.000 passos,
+seleção de checkpoint e parada pelo lucro simulado), pareado nas sementes 42–46:
+
+| % do ótimo da PD, total | venda única | assinatura |
+|---|---|---|
+| bandido | 75,5 | 84,4 |
+| CQL γ = 0 | 78,1 | 86,7 |
+| **IQL γ = 0,95** | **84,4** | **92,3** |
+| **CQL γ = 0,95** | **84,5** | **98,4** |
+
+| | venda única | assinatura |
+|---|---|---|
+| `iql_g095 − cql_g095` | −0,09 (−1,57 a 1,39), inconclusivo | **−6,06 (−6,50 a −5,61)** |
+| `iql_g095 − bandido` | +8,90 (7,05 a 10,75) | +7,88 (7,36 a 8,41) |
+| `iql_g095 − cql_g0` | +6,30 (4,11 a 8,49) | +5,56 (5,24 a 5,88) |
+
+- **A conclusão do TCC não depende do algoritmo:** com IQL, planejar (γ = 0,95)
+  também supera o bandido e o RL míope nas duas cobranças, em todos os tiers.
+- Na venda única IQL e CQL empatam; na assinatura o CQL fica 6 p.p. à frente. O IQL
+  nunca avalia Q fora das ações logadas, e a política sai de uma regressão ponderada
+  sobre essas ações: com coleta uniforme ele tende a ficar mais perto do
+  comportamento dos dados, enquanto a assinatura pede preços baixos persistentes no
+  começo da campanha (seção 9e), uma região mais rara nos dados.
+- Custo: o IQL parou cedo pela regra de paciência (mesma do CQL) e treinou em ~13 min
+  por modelo, contra 1,5–2 h do CQL. Os hiperparâmetros do IQL são os do artigo
+  original, sem ajuste; não foi feita busca para nenhum dos dois algoritmos neste
+  ambiente.
+
+### 9h.1 Resultado: número de contextos (3 sementes, CQL 20.000 passos, `resultados/sensibilidade/contextos/`)
+
+**Estático** (% do ótimo, total; `cql − bandido` em p.p. com IC 95%):
+
+| | 60 contextos | 144 (principal, 10 sementes, 50 mil passos) | 432 contextos |
+|---|---|---|---|
+| venda única: bandido / CQL | 79,2 / 82,4 | 82,7 / 84,9 | 82,5 / 84,6 |
+| venda única: `cql − bandido` | +3,2 (2,7 a 3,6) | +2,2 | +2,1 (1,8 a 2,3) |
+| assinatura: bandido / CQL | 98,7 / 98,4 | 99,0 / 98,9 | 99,2 / 98,4 |
+| assinatura: `cql − bandido` | −0,3 (−0,5 a −0,1) | −0,08 | −0,7 (−0,8 a −0,6) |
+
+C1 e C3 passam nos dois conjuntos; C2 passa no total (a diferença na assinatura fica
+dentro da margem de −1 p.p.).
+
+**Sequencial** (% do ótimo da PD, total):
+
+| | 60 contextos | 144 (principal) | 432 contextos |
+|---|---|---|---|
+| venda única: bandido / CQL γ=0 / CQL γ=0,95 | 72,6 / 75,3 / 79,6 | 75,4 / 78,1 / 84,2 | 74,7 / 78,1 / 83,4 |
+| S1 venda única | +7,0 (0,8 a 13,1) | +8,8 | +8,6 (5,0 a 12,3) |
+| S2 venda única | +4,2 (−2,0 a 10,5), inconclusivo | +6,1 | +5,2 (2,0 a 8,4) |
+| assinatura: bandido / CQL γ=0 / CQL γ=0,95 | 84,7 / 86,6 / 95,2 | 84,4 / 86,7 / 98,3 | 84,5 / 87,1 / 95,2 |
+| S1 assinatura | +10,5 (9,4 a 11,6) | +13,9 | +10,7 (10,5 a 11,0) |
+| S2 assinatura | +8,6 (8,1 a 9,1) | +11,6 | +8,1 (6,7 a 9,5) |
+
+- **As conclusões se mantêm** com 60 e com 432 contextos: o CQL ganha do bandido na
+  venda única e empata na assinatura no estático; no sequencial, S1 e S2 têm o mesmo
+  sinal nos dois conjuntos e nas duas cobranças.
+- A única exceção estatística é S2 na venda única com 60 contextos: γ = 0,95 supera
+  γ = 0 nas três sementes (+3,8, +1,9 e +7,0 p.p.), mas com 3 sementes o IC cruza zero.
+- O CQL γ = 0,95 da assinatura fica em ~95% (contra 98,3% na rodada principal) com
+  20.000 passos; a diferença é do treino mais curto, não do número de contextos (é a
+  mesma nos dois conjuntos).
+
+### 9h.2 Resultado: sensibilidade de κ e λ (3 sementes, CQL 20.000 passos, `resultados/sensibilidade/kappa_lambda/`)
+
+Uma variável por vez em torno de κ = 0,15, λ = 0,85. % do ótimo da PD, total
+(bandido / CQL γ = 0 / CQL γ = 0,95), e S1 = `cql_g095 − bandido`,
+S2 = `cql_g095 − cql_g0` em p.p. com IC 95%:
+
+| κ | λ | venda única | S1 | S2 | assinatura | S1 | S2 |
+|---|---|---|---|---|---|---|---|
+| 0,105 | 0,85 | 79,5 / 80,9 / 84,6 | +5,0 (2,8 a 7,3) | +3,7 (1,2 a 6,1) | 91,2 / 93,0 / 97,5 | +6,3 (5,1 a 7,4) | +4,5 (3,7 a 5,3) |
+| 0,15 | 0,85 | 75,4 / 78,1 / 84,2 | +8,8 | +6,1 | 84,4 / 86,7 / 98,3 | +13,9 | +11,6 |
+| 0,195 | 0,85 | 70,2 / 74,1 / 82,3 | +12,0 (9,8 a 14,3) | +8,2 (6,1 a 10,4) | 78,1 / 80,3 / 93,1 | +15,0 (12,5 a 17,6) | +12,9 (11,0 a 14,8) |
+| 0,15 | 0,75 | 71,9 / 75,9 / 80,2 | +8,3 (7,5 a 9,1) | +4,4 (3,0 a 5,7) | 79,2 / 81,5 / 93,2 | +14,0 (13,2 a 14,8) | +11,7 (11,0 a 12,4) |
+| 0,15 | 0,95 | 77,9 / 79,5 / 84,8 | +6,9 (5,0 a 8,7) | +5,2 (3,6 a 6,9) | 87,9 / 90,2 / 96,4 | +8,5 (7,0 a 10,1) | +6,2 (4,8 a 7,6) |
+
+A linha κ = 0,15, λ = 0,85 é a rodada principal (10 sementes, 50.000 passos), só
+como referência. Por tier (`robustez_s1_s2.csv`): 47 de 48 combinações
+(4 configurações × 2 cobranças × 3 recortes × S1/S2) têm IC 95% acima de zero.
+
+- **S1 e S2 continuam satisfeitos nas quatro configurações**, no total e nos dois
+  tiers. A única exceção é S2 na venda única, Low Ticket, com κ = 0,105: +4,8 p.p.
+  (−0,4 a 9,9), inconclusivo com 3 sementes.
+- **O tamanho da vantagem acompanha a força do efeito intertemporal.** Ela cresce
+  com κ (o preço move mais a reputação) e diminui com λ (com λ = 0,95 a reputação
+  quase não muda de um período para o outro). Com efeito mais fraco, o bandido e o
+  RL míope perdem menos, e o ganho de planejar cai, por exemplo, de +13,9 para
+  +6,3 p.p. na assinatura com κ = 0,105. Com efeito mais forte, ele sobe.
+- A conclusão qualitativa (planejar supera o bandido e o RL míope) não depende do
+  valor exato de κ e λ dentro de ±30%. O tamanho do ganho depende, e por isso os
+  números absolutos do sequencial só valem para a calibração escolhida (seção 9f).
+- Na venda única o oráculo míope (que conhece a demanda do período) continua acima
+  do CQL γ = 0,95 em todas as configurações (83–95% contra 80–85%), como na rodada
+  principal. Na assinatura o CQL γ = 0,95 supera o oráculo míope em todas.
+
+### 9h.3 Resultado: curva de aprendizado (3 sementes, CQL 20.000 passos, `resultados/sensibilidade/curva_aprendizado/`)
+
+Cada fração é o começo do dataset logado (já embaralhado), antes da divisão 80/20;
+os 144 contextos e a avaliação não mudam. % do ótimo, total (`resumo.csv`):
+
+| fração (linhas no total / de treino / de treino por contexto) | 10% (6.000 / 4.800 / ~33) | 25% (15.000 / 12.000 / ~83) | 50% (30.000 / 24.000 / ~167) | 100% (60.000 / 48.000 / ~333) |
+|---|---|---|---|---|
+| venda única: SL | 75,5 | 77,6 | 77,7 | 78,7 |
+| venda única: bandido | 81,6 | 81,9 | 82,4 | 82,6 |
+| venda única: CQL | 84,7 | 84,7 | 84,7 | 84,7 |
+| venda única: `cql − bandido` | +3,0 (2,4 a 3,6) | +2,8 (2,4 a 3,3) | +2,2 (1,4 a 3,0) | +2,1 (1,5 a 2,7) |
+| assinatura: SL | 92,3 | 92,9 | 93,6 | 94,1 |
+| assinatura: bandido | 98,0 | 98,5 | 98,8 | 99,0 |
+| assinatura: CQL | 98,4 | 98,5 | 98,5 | 98,5 |
+| assinatura: `cql − bandido` | +0,5 (−0,2 a 1,1) | −0,1 (−0,9 a 0,8) | −0,3 (−0,5 a −0,1) | −0,5 (−0,7 a −0,4) |
+
+Referências fixas: aleatório 72,3 / 87,7, meio da faixa 80,6 / 97,5 e teto
+observável (`oraculo_obs`) 88,9 / 100 (venda única / assinatura).
+
+- **O CQL já estabiliza com 10% dos dados** (cerca de 33 linhas de treino por
+  contexto): a variação entre 10% e 100% fica abaixo de 0,1 p.p. no total. Com
+  20.000 passos de treino o limite é o treino, não o volume de dados (com 50.000
+  passos e 100% dos dados, a rodada principal dá 84,9 / 98,9).
+- **O bandido melhora devagar até 100%** (+1,0 p.p. em cada cobrança entre 10% e
+  100%) e o **SL** mais ainda (+3,2 e +1,8 p.p.), sem estabilizar: modelos de lucro
+  que interpolam por preço precisam de mais pontos por estado que o CQL, cujo
+  pessimismo o mantém perto dos preços logados de maior lucro.
+- **As conclusões do estático valem em todas as frações:** o CQL supera o bandido na
+  venda única (IC acima de zero nas quatro), e na assinatura a diferença fica dentro
+  da margem de −1 p.p. do C2. C1 e C3 passam em todas. Com pouco dado a ordem na
+  assinatura até se inverte a favor do CQL (+0,5 com 10%), porque o bandido perde
+  mais com menos dados.
+- **Proxy de dado real necessário:** no simulador, a ordem e quase todo o
+  desempenho já aparecem com ~6.000 campanhas logadas com preço aleatório (cerca de
+  40 por combinação de cenário, região e plataforma). É um limite inferior otimista:
+  dados reais têm mais ruído, coleta não uniforme e mais variáveis, e o número vale
+  só para este espaço de estados (144 contextos, ação de uma dimensão).
+
 ## 10. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),
@@ -361,6 +878,7 @@ GPU e grau de explicabilidade.
 | 2026-10-11 | Seção 11, itens 1 e 2 (preço de referência no estado; folga do simulador): manter o simulador v1.0 e declarar como limitação | Mudar o estado ou a calibração depois das rodadas finais invalidaria a comparação; os dois pontos entram em `docs/limitacoes.md`. |
 | 2026-10-11 | Análise de sensibilidade **posterior** do bandido regularizado no deslocamento de público (`avaliar_bandido_robusto.py`) | Feita depois de ver a queda de 12–14 p.p. É exploratória: o bandido da comparação principal continua o registrado (`bandido.BandidoLGBM`). |
 | 2026-10-11 | Tela mostra "indisponível" (não "—" nem número) quando a API devolve `null` em lucro do método ou VaR/CVaR | O risco vem do crítico do RL para todos os métodos; sem o RL carregado, não há valor a mostrar. Conferido no navegador (`docs/figuras/tela_sem_rl.png`). |
+| 2026-10-14 | Regressão quantílica no SL e no bandido; API com risco próprio por método; rotas legadas `/recommend_price` e `/recommend_subscription_price` removidas | Comparação simétrica de risco (seção 9c). Não muda as decisões de preço nem a comparação principal. |
 | 2026-10-08 | `oraculo_obs` passa a maximizar o % do ótimo, não o lucro médio em US$ | Erro de definição: maximizando US$, o cenário de lucro maior dominava e uma política observável (ε-greedy) passou do "teto". Na venda única o teto sobe de 83,6% para 88,9% (Low: 67% → 78%). |
 
 ## Como reproduzir
@@ -377,18 +895,26 @@ python -m pytest tests                   # simulador v1.0, sequencial e API (~1 
 python train_pipeline.py                 # ~4 h 30 (dois CQL de 50 mil passos)
 
 # Comparação principal (seção 6)
-python avaliar_politicas.py --saida resultados/final_5_sementes   # 5 sementes, ~12 h
+python avaliar_politicas.py --saida resultados/final_10_sementes  # 10 sementes, ~24 h em série
 
 # Testes de ambiente (seção 9b)
-python avaliar_sequencial.py             # 5 sementes x 2 cobranças, ~20 h em série
+python avaliar_sequencial.py             # 10 sementes x 2 cobranças, ~40 h em série
 python figura_sequencial.py
 python avaliar_robustez.py               # demanda linear, 3 sementes, ~4 h 30
 python avaliar_deslocamento.py           # público novo, 3 sementes, ~4 h 30
 python avaliar_bandido_robusto.py        # sensibilidade do bandido, ~20 min
 python avaliar_fqe.py                    # FQE; precisa dos modelos do train_pipeline.py, ~15 min
+python avaliar_risco.py                  # calibração do VaR/CVaR; idem (com treinar_quantis.py), ~5 min
+python avaliar_selecao_ope.py --sementes 3   # FQE x WIS na escolha do checkpoint, ~6 h
+python avaliar_ood.py                    # suporte dos dados (com os modelos do pipeline), ~5 min
+python analise_estatistica.py            # Holm/Bonferroni, poder, distância ao ótimo (segundos)
+python calibracao_sequencial.py          # grade de κ e λ (só PD), ~10 min
+python estabilidade_shap.py              # SHAP do SL em 5 sementes, ~30 min
 
 # Análises complementares
-python avaliar_generalizacao.py --sementes 3   # regiões e cenários fora do treino
+python avaliar_generalizacao.py           # regiões e cenários fora do treino, 1 semente, ~2 h
+# Bandido em operação: lento (refaz o bandido e os 5 modelos do Thompson a cada lote);
+# com 1 thread passou de 9 h sem terminar a 1ª semente de 5. Use várias threads.
 for n in 10 100; do   # 120 e 1.200 linhas iniciais
   python simular_bandido_online.py --n-inicial $n --saida resultados/bandido_online_$((n*12))
   python figura_bandido_online.py --entrada resultados/bandido_online_$((n*12))/bandido_online_curva.csv \
@@ -400,7 +926,7 @@ python ablacoes_cql.py && python diagnostico_cql.py
 O sequencial roda em paralelo, uma semente e cobrança por processo, e depois junta:
 
 ```bash
-for m in venda_unica assinatura; do for s in 42 43 44 45 46; do
+for m in venda_unica assinatura; do for s in $(seq 42 51); do
   OMP_NUM_THREADS=1 python avaliar_sequencial.py --modelos $m --semente-inicial $s --sementes 1 \
       --saida tmp/seq/${m}_s$s &
 done; done; wait
@@ -409,13 +935,24 @@ python avaliar_sequencial.py --agregar tmp/seq/* --saida resultados/sequencial
 
 | Script | Saída em `resultados/` | Seção |
 |---|---|---|
-| `avaliar_politicas.py` | `final_5_sementes/{tabela_artigo,comparacoes,por_semente,custo_explicabilidade}.csv`, `manifesto.json` | 6 |
+| `avaliar_politicas.py` | `final_10_sementes/{tabela_artigo,comparacoes,por_semente,custo_explicabilidade}.csv`, `manifesto.json` | 6 |
 | `avaliar_sequencial.py` | `sequencial/{tabela,tabela_legivel,comparacoes,por_semente,trajetorias}.csv`, `manifesto.json` | 9b |
 | `figura_sequencial.py` | `docs/figuras/sequencial_trajetorias.png` | 9b |
 | `avaliar_robustez.py` | `robustez_linear/` | 9b |
 | `avaliar_deslocamento.py` | `deslocamento/{tabela,por_semente}.csv` | 9b |
 | `avaliar_bandido_robusto.py` | `bandido_robusto/{tabela,por_semente}.csv` | 9b |
 | `avaliar_fqe.py` | `fqe.csv`, `fqe_por_estado.csv` | 9b |
+| `treinar_quantis.py` + `avaliar_risco.py` | `risco.csv`, `risco_por_estado.csv` | 9c |
+| `avaliar_selecao_ope.py` | `selecao_ope/{checkpoints,resumo}.csv` | 9d |
+| `avaliar_ood.py` (precisa de `train_pipeline.py --sequencial`) | `ood/{resumo,estatico_por_estado,sequencial_por_passo}.csv` | 9e |
+| `analise_estatistica.py` | `estatistica/{testes,poder,distancia_oraculo}.csv` | 5, 6, 9b |
+| `calibracao_sequencial.py` | `calibracao_sequencial.csv` | 9f |
+| `estabilidade_shap.py` | `shap/{importancia_por_semente,estabilidade}.csv` | 9g |
+| `avaliar_politicas.py --sem-cql --politicas ucb1 thompson_tab` | `baselines_classicos/` | 9h |
+| `avaliar_sequencial.py --politicas iql_g095 --sementes 1 --semente-inicial S` (S = 42–46), depois `--agregar` com o `sequencial/` das mesmas sementes | `iql/` | 9h.5 |
+| `avaliar_politicas.py` / `avaliar_sequencial.py --cenarios reduzido\|ampliado --sementes 1 --semente-inicial S --passos-cql 20000`, depois `--agregar` | `sensibilidade/contextos/` | 9h.1 |
+| `avaliar_sequencial.py --kappa K --lambda L --politicas bandido cql_g0 cql_g095 --sementes 1 --semente-inicial S --passos-cql 20000`, depois `--agregar` | `sensibilidade/kappa_lambda/` | 9h.2 |
+| `avaliar_politicas.py --fracao-dados F --politicas aleatorio meio_faixa sl bandido cql oraculo_obs --sementes 1 --semente-inicial S --passos-cql 20000`, depois `--agregar` | `sensibilidade/curva_aprendizado/` | 9h.3 |
 | `avaliar_generalizacao.py` | `generalizacao.csv`, `generalizacao_resumo.csv` | 7 |
 | `simular_bandido_online.py` + `figura_bandido_online.py` | `bandido_online_{120,1200}/`, `docs/figuras/bandido_online_*_iniciais.png` | 8 |
 | `ablacoes_cql.py`, `diagnostico_cql.py` | `ablacoes_cql*.csv`, `diagnostico_cql.csv` | 9 |

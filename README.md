@@ -78,7 +78,7 @@ curl -X POST "http://127.0.0.1:8000/comparar?cobranca=venda_unica" \
 
 ```bash
 cd project
-python avaliar_politicas.py --saida resultados/final_5_sementes   # comparação principal
+python avaliar_politicas.py --saida resultados/final_10_sementes  # comparação principal, 10 sementes
 python avaliar_sequencial.py && python figura_sequencial.py         # ambiente sequencial
 python avaliar_robustez.py && python avaliar_deslocamento.py && python avaliar_fqe.py
 ```
@@ -91,15 +91,18 @@ Métrica, comparações, critérios de sucesso e desvios registrados:
 ## Escopo
 
 A API e a tela servem a decisão de preço de **passo único**. O ambiente sequencial
-(`project/sequencial.py`, o preço de hoje muda a demanda de amanhã) é um
-experimento: mostra quando o RL que planeja passa a valer a pena, mas não está
-integrado ao produto. Motivos e texto para a monografia em
+(`project/sequencial.py`, o preço de hoje muda a demanda de amanhã) mostra quando o
+RL que planeja passa a valer a pena; a rota experimental `POST /recomendar_sequencial`
+serve esse agente com o estado da campanha (reputação do Gêmeo Digital e período)
+persistido por `cliente_id` em SQLite. Ela exige `python train_pipeline.py --sequencial`.
+Motivos, limites e texto para a monografia em
 [`project/docs/escopo_produto.md`](project/docs/escopo_produto.md).
 
 Verificar a API em execução com os modelos treinados (uma chamada por método e
 cobrança): `LOCAC_API_KEY=... python verificar_api.py` (na pasta `project/`).
 Resultado em máquina limpa: [`project/docs/verificacao.md`](project/docs/verificacao.md).
 Limitações reunidas para a monografia: [`project/docs/limitacoes.md`](project/docs/limitacoes.md).
+Exemplo de retorno (hipotético): [`project/docs/roi_ilustrativo.md`](project/docs/roi_ilustrativo.md).
 
 ## Segurança
 

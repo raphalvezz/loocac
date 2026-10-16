@@ -1,0 +1,289 @@
+Cenario,Regiao,Plataforma,Tier,acao,fora_faixa_estado,na_borda,fora_faixa_cenario,vizinhos,modelo,preco
+0,North America,Instagram,Low Ticket,0.09471213817596436,False,False,False,16,venda_unica,14.614050209051356
+0,North America,Facebook,Low Ticket,0.06857490539550781,False,False,False,15,venda_unica,14.482266984987058
+0,North America,LinkedIn,Low Ticket,0.11248576641082719,False,False,False,10,venda_unica,14.704348688630539
+0,Europe,Instagram,Low Ticket,0.0676572322845459,False,False,False,10,venda_unica,14.477661758843215
+0,Europe,Facebook,Low Ticket,0.06876349449157759,False,False,False,20,venda_unica,14.483213576893114
+0,Europe,LinkedIn,Low Ticket,0.07264530658721902,False,False,False,13,venda_unica,14.502711442724905
+0,Asia,Instagram,Low Ticket,0.06788682937622137,False,False,False,12,venda_unica,14.47881382535543
+0,Asia,Facebook,Low Ticket,0.09888708591461182,False,False,False,14,venda_unica,14.635210972771752
+0,Asia,LinkedIn,Low Ticket,0.0727753639221187,False,False,False,14,venda_unica,14.503365159018227
+0,South America,Instagram,Low Ticket,0.05980491638183616,False,False,False,13,venda_unica,14.438315735713829
+0,South America,Facebook,Low Ticket,0.07119238376617432,False,False,False,17,venda_unica,14.495410517879453
+0,South America,LinkedIn,Low Ticket,0.07260990142822243,False,False,False,13,venda_unica,14.502533488396478
+1,North America,Instagram,Low Ticket,0.09487628936767556,False,False,False,15,venda_unica,73.07440816427452
+1,North America,Facebook,Low Ticket,0.06879281997680575,False,False,False,16,venda_unica,72.41680388447271
+1,North America,LinkedIn,Low Ticket,0.11285936832427934,False,False,False,18,venda_unica,73.53126369573765
+1,Europe,Instagram,Low Ticket,0.0677284002304086,False,False,False,19,venda_unica,72.39009426884148
+1,Europe,Facebook,Low Ticket,0.06893849372863725,False,False,False,12,venda_unica,72.42046006042145
+1,Europe,LinkedIn,Low Ticket,0.07296955585479736,False,False,False,14,venda_unica,72.52170647189477
+1,Asia,Instagram,Low Ticket,0.06795859336853072,False,False,False,10,venda_unica,72.39586969858225
+1,Asia,Facebook,Low Ticket,0.09892749786376887,False,False,False,18,venda_unica,73.17707975395464
+1,Asia,LinkedIn,Low Ticket,0.07292258739471347,False,False,False,22,venda_unica,72.52052597114587
+1,South America,Instagram,Low Ticket,0.05981743335723877,False,False,False,12,venda_unica,72.19189185015045
+1,South America,Facebook,Low Ticket,0.07130146026611439,False,False,False,23,venda_unica,72.47979249368301
+1,South America,LinkedIn,Low Ticket,0.07274591922760076,False,False,False,15,venda_unica,72.51608578253558
+2,North America,Instagram,Low Ticket,0.09617853164672874,False,False,False,30,venda_unica,48.32011421613518
+2,North America,Facebook,Low Ticket,0.07049500942230247,False,False,False,41,venda_unica,47.33168290740691
+2,North America,LinkedIn,Low Ticket,0.11566293239593484,False,False,False,29,venda_unica,49.083718645791514
+2,Europe,Instagram,Low Ticket,0.0682978630065918,False,False,False,45,venda_unica,47.24807039012256
+2,Europe,Facebook,Low Ticket,0.0697106122970581,False,False,False,45,venda_unica,47.3018156660692
+2,Europe,LinkedIn,Low Ticket,0.07537400722503662,False,False,False,47,venda_unica,47.51788289509691
+2,Asia,Instagram,Low Ticket,0.06853306293487549,False,False,False,53,venda_unica,47.25701387122189
+2,Asia,Facebook,Low Ticket,0.0991395711898806,False,False,False,38,venda_unica,48.435388892977464
+2,Asia,LinkedIn,Low Ticket,0.07410013675689697,False,False,False,41,venda_unica,47.46919690526836
+2,South America,Instagram,Low Ticket,0.05991673469543457,False,False,False,43,venda_unica,46.93048019813659
+2,South America,Facebook,Low Ticket,0.07217288017272971,False,False,False,61,venda_unica,47.39563399131657
+2,South America,LinkedIn,Low Ticket,0.07343375682830788,False,False,False,39,venda_unica,47.44374844071718
+3,North America,Instagram,Low Ticket,0.09617853164672874,False,False,True,1,venda_unica,48.32011421613518
+3,North America,Facebook,Low Ticket,0.07049500942230247,False,False,True,0,venda_unica,47.33168290740691
+3,North America,LinkedIn,Low Ticket,0.11566293239593484,False,False,True,3,venda_unica,49.083718645791514
+3,Europe,Instagram,Low Ticket,0.0682978630065918,False,False,True,0,venda_unica,47.24807039012256
+3,Europe,Facebook,Low Ticket,0.0697106122970581,False,False,True,0,venda_unica,47.3018156660692
+3,Europe,LinkedIn,Low Ticket,0.07537400722503662,False,False,True,0,venda_unica,47.51788289509691
+3,Asia,Instagram,Low Ticket,0.06853306293487549,False,False,True,0,venda_unica,47.25701387122189
+3,Asia,Facebook,Low Ticket,0.0991395711898806,False,False,True,6,venda_unica,48.435388892977464
+3,Asia,LinkedIn,Low Ticket,0.07410013675689697,False,False,True,0,venda_unica,47.46919690526836
+3,South America,Instagram,Low Ticket,0.05991673469543457,False,False,True,0,venda_unica,46.93048019813659
+3,South America,Facebook,Low Ticket,0.07217288017272971,False,False,True,0,venda_unica,47.39563399131657
+3,South America,LinkedIn,Low Ticket,0.07343375682830788,False,False,True,0,venda_unica,47.44374844071718
+4,North America,Instagram,Low Ticket,0.11175084114074707,False,False,False,34,venda_unica,48.929439495829996
+4,North America,Facebook,Low Ticket,0.0834500789642334,False,False,False,44,venda_unica,47.827705770416266
+4,North America,LinkedIn,Low Ticket,0.14330220222473145,False,False,True,20,venda_unica,50.18766244023457
+4,Europe,Instagram,Low Ticket,0.07512831687927224,False,False,False,45,venda_unica,47.50848898338002
+4,Europe,Facebook,Low Ticket,0.07662594318389915,False,False,False,42,venda_unica,47.565779222430116
+4,Europe,LinkedIn,Low Ticket,0.09532618522644021,False,False,False,36,venda_unica,48.2869828462623
+4,Asia,Instagram,Low Ticket,0.07220470905303955,False,False,False,45,venda_unica,47.39684796561389
+4,Asia,Facebook,Low Ticket,0.10099136829376221,False,False,False,38,venda_unica,48.50761996346639
+4,Asia,LinkedIn,Low Ticket,0.08716440200805642,False,False,False,47,venda_unica,47.97087598146547
+4,South America,Instagram,Low Ticket,0.05945849418640159,False,False,False,35,venda_unica,46.91317754757901
+4,South America,Facebook,Low Ticket,0.07964158058166504,False,False,False,40,venda_unica,47.6813492015061
+4,South America,LinkedIn,Low Ticket,0.08057975769042947,False,False,False,33,venda_unica,47.71736072952169
+5,North America,Instagram,Low Ticket,0.11175084114074707,False,False,True,8,venda_unica,48.929439495829996
+5,North America,Facebook,Low Ticket,0.0834500789642334,False,False,True,0,venda_unica,47.827705770416266
+5,North America,LinkedIn,Low Ticket,0.14330220222473145,False,False,False,27,venda_unica,50.18766244023457
+5,Europe,Instagram,Low Ticket,0.07512831687927224,False,False,True,0,venda_unica,47.50848898338002
+5,Europe,Facebook,Low Ticket,0.07662594318389915,False,False,True,0,venda_unica,47.565779222430116
+5,Europe,LinkedIn,Low Ticket,0.09532618522644021,False,False,True,1,venda_unica,48.2869828462623
+5,Asia,Instagram,Low Ticket,0.07220470905303955,False,False,True,0,venda_unica,47.39684796561389
+5,Asia,Facebook,Low Ticket,0.10099136829376221,False,False,True,3,venda_unica,48.50761996346639
+5,Asia,LinkedIn,Low Ticket,0.08716440200805642,False,False,True,0,venda_unica,47.97087598146547
+5,South America,Instagram,Low Ticket,0.05945849418640159,False,False,True,0,venda_unica,46.91317754757901
+5,South America,Facebook,Low Ticket,0.07964158058166504,False,False,True,0,venda_unica,47.6813492015061
+5,South America,LinkedIn,Low Ticket,0.08057975769042947,False,False,True,0,venda_unica,47.71736072952169
+6,North America,Instagram,High Ticket,0.2144409418106077,False,False,False,22,venda_unica,761.6607570308734
+6,North America,Facebook,High Ticket,0.11597251892089755,False,False,False,17,venda_unica,736.1064202139738
+6,North America,LinkedIn,High Ticket,0.4820381402969369,False,False,False,21,venda_unica,835.6780051914058
+6,Europe,Instagram,High Ticket,0.011756062507629839,False,False,False,15,venda_unica,709.9936522432921
+6,Europe,Facebook,High Ticket,-0.05678856372833285,False,False,False,20,venda_unica,693.3259758970432
+6,Europe,LinkedIn,High Ticket,0.2687631845474232,False,False,False,18,venda_unica,776.1361148266195
+6,Asia,Instagram,High Ticket,-0.19302558898925748,False,False,False,17,venda_unica,661.3506063512178
+6,Asia,Facebook,High Ticket,-0.253706395626069,False,False,False,14,venda_unica,647.5873916677824
+6,Asia,LinkedIn,High Ticket,0.03185439109802268,False,False,False,23,venda_unica,714.9564125671145
+6,South America,Instagram,High Ticket,-0.1902053356170652,False,False,False,15,venda_unica,661.9973432073132
+6,South America,Facebook,High Ticket,-0.237737774848939,False,False,False,10,venda_unica,651.1812716526458
+6,South America,LinkedIn,High Ticket,0.048428416252136675,False,False,False,15,venda_unica,719.0750251456601
+7,North America,Instagram,High Ticket,0.2678325176239007,False,False,False,12,venda_unica,1551.771633400118
+7,North America,Facebook,High Ticket,0.16152822971343883,False,False,False,19,venda_unica,1495.6411963646108
+7,North America,LinkedIn,High Ticket,0.5315742492675786,False,False,False,21,venda_unica,1700.2974160011597
+7,Europe,Instagram,High Ticket,0.05558550357818648,False,False,False,15,venda_unica,1441.7217481895966
+7,Europe,Facebook,High Ticket,-0.022747218608856534,False,False,False,12,venda_unica,1403.1083213056656
+7,Europe,LinkedIn,High Ticket,0.3162001371383658,False,False,False,21,venda_unica,1578.003131751383
+7,Asia,Instagram,High Ticket,-0.16312587261199862,False,False,False,16,venda_unica,1336.478902637865
+7,Asia,Facebook,High Ticket,-0.23403221368789717,False,False,False,17,venda_unica,1304.0361763782357
+7,Asia,LinkedIn,High Ticket,0.07816970348358288,False,False,False,29,venda_unica,1453.0505078541878
+7,South America,Instagram,High Ticket,-0.16163539886474743,False,False,False,16,venda_unica,1337.1694509656254
+7,South America,Facebook,High Ticket,-0.21634906530380216,False,False,False,14,venda_unica,1312.0525170549852
+7,South America,LinkedIn,High Ticket,0.08252990245819003,False,False,False,20,venda_unica,1455.247915662424
+8,North America,Instagram,High Ticket,0.349102377891539,False,False,False,27,venda_unica,3710.743211719384
+8,North America,Facebook,High Ticket,0.2306625843048089,False,False,False,15,venda_unica,3514.7540124882066
+8,North America,LinkedIn,High Ticket,0.6019675731658938,False,False,False,25,venda_unica,4166.5201898548
+8,Europe,Instagram,High Ticket,0.12973988056182684,False,False,False,18,venda_unica,3355.9412132907046
+8,Europe,Facebook,High Ticket,0.03577780723571622,False,False,False,8,venda_unica,3214.5390836903707
+8,Europe,LinkedIn,High Ticket,0.38944447040557906,False,False,False,13,venda_unica,3779.964907669778
+8,Asia,Instagram,High Ticket,-0.11516493558883478,False,False,False,20,venda_unica,2999.7539389029025
+8,Asia,Facebook,High Ticket,-0.1981508731842041,False,False,False,19,venda_unica,2887.845268457349
+8,Asia,LinkedIn,High Ticket,0.15539062023162908,False,False,False,14,venda_unica,3395.6120991710363
+8,South America,Instagram,High Ticket,-0.11186540126800382,False,False,False,14,venda_unica,3004.2919951664585
+8,South America,Facebook,High Ticket,-0.17851495742797774,False,False,False,12,venda_unica,2913.9418319767506
+8,South America,LinkedIn,High Ticket,0.13918375968933172,False,False,False,22,venda_unica,3370.4927187201997
+9,North America,Instagram,High Ticket,0.4012358188629137,False,False,False,21,venda_unica,3800.440106617907
+9,North America,Facebook,High Ticket,0.26657545566558927,False,False,False,15,venda_unica,3573.0617317598703
+9,North America,LinkedIn,High Ticket,0.6542812585830691,False,False,False,23,venda_unica,4267.586620246431
+9,Europe,Instagram,High Ticket,0.15763115882873646,False,False,False,19,venda_unica,3399.0994586686343
+9,Europe,Facebook,High Ticket,0.06223952770233043,False,False,False,17,venda_unica,3253.747137889919
+9,Europe,LinkedIn,High Ticket,0.434576034545898,False,False,False,26,venda_unica,3858.936173887494
+9,Asia,Instagram,High Ticket,-0.09977698326110807,False,False,False,19,venda_unica,3020.9766827559456
+9,Asia,Facebook,High Ticket,-0.18250679969787542,False,False,False,11,venda_unica,2908.617556950016
+9,Asia,LinkedIn,High Ticket,0.22466158866882147,False,False,False,16,venda_unica,3505.104071174869
+9,South America,Instagram,High Ticket,-0.05057257413864291,False,False,False,16,venda_unica,3089.8512667455816
+9,South America,Facebook,High Ticket,-0.15607631206512396,False,False,False,12,venda_unica,2944.0521284717165
+9,South America,LinkedIn,High Ticket,0.1671352386474616,False,False,False,18,venda_unica,3413.932257338895
+10,North America,Instagram,High Ticket,0.40573048591613614,False,False,False,29,venda_unica,8138.671610665068
+10,North America,Facebook,High Ticket,0.24345934391021773,False,False,False,20,venda_unica,7693.594362163603
+10,North America,LinkedIn,High Ticket,0.7020089626312269,False,False,False,25,venda_unica,9018.781798020771
+10,Europe,Instagram,High Ticket,0.09460544586181463,False,False,False,19,venda_unica,7306.75491956544
+10,Europe,Facebook,High Ticket,0.03511166572570956,False,False,False,26,venda_unica,7157.639721312296
+10,Europe,LinkedIn,High Ticket,0.4988087415695195,False,False,False,14,venda_unica,8405.493154999673
+10,Asia,Instagram,High Ticket,-0.2517076730728156,False,False,False,24,venda_unica,6480.361337414401
+10,Asia,Facebook,High Ticket,-0.25533598661422896,False,False,False,14,venda_unica,6472.217549253
+10,Asia,LinkedIn,High Ticket,0.15917694568634166,False,False,False,18,venda_unica,7472.114526790925
+10,South America,Instagram,High Ticket,-0.14381480216980191,False,False,False,23,venda_unica,6727.2678162637285
+10,South America,Facebook,High Ticket,-0.2836949825286862,False,False,False,20,venda_unica,6408.917078027076
+10,South America,LinkedIn,High Ticket,0.1606142520904532,False,False,False,13,venda_unica,7475.837556642122
+11,North America,Instagram,High Ticket,0.39272153377532804,False,False,False,16,venda_unica,18928.22150617748
+11,North America,Facebook,High Ticket,0.3353252410888683,False,False,False,15,venda_unica,18436.975094016827
+11,North America,LinkedIn,High Ticket,0.6159594058990476,False,False,False,33,venda_unica,20966.572973360002
+11,Europe,Instagram,High Ticket,0.16045856475829967,False,False,False,21,venda_unica,17017.526895500727
+11,Europe,Facebook,High Ticket,0.16943836212158248,False,False,False,18,venda_unica,17087.68210756751
+11,Europe,LinkedIn,High Ticket,0.36075794696807995,False,False,False,19,venda_unica,18653.056882356093
+11,Asia,Instagram,High Ticket,-0.09533053636550815,False,False,False,20,venda_unica,15135.685222203787
+11,Asia,Facebook,High Ticket,-0.09451228380203092,False,False,False,18,venda_unica,15141.360330666459
+11,Asia,LinkedIn,High Ticket,0.19230842590332164,False,False,False,20,venda_unica,17267.664924551787
+11,South America,Instagram,High Ticket,0.0582908391952508,False,False,False,13,venda_unica,16239.330959097673
+11,South America,Facebook,High Ticket,-0.07919877767562944,False,False,False,14,venda_unica,15247.962780276777
+11,South America,LinkedIn,High Ticket,0.21255993843078436,False,False,False,20,venda_unica,17428.622216009997
+0,North America,Instagram,Low Ticket,0.09507918357849143,False,False,False,16,assinatura,14.61590935494766
+0,North America,Facebook,Low Ticket,0.07910990715026833,False,False,False,14,assinatura,14.53524061163386
+0,North America,LinkedIn,Low Ticket,0.1312736272811894,False,False,False,12,assinatura,14.80040663292007
+0,Europe,Instagram,Low Ticket,0.0806072950363157,False,False,False,11,assinatura,14.542785706429989
+0,Europe,Facebook,Low Ticket,0.03190135955810591,False,False,False,19,assinatura,14.299361014844532
+0,Europe,LinkedIn,Low Ticket,0.10421812534332298,False,False,False,16,assinatura,14.662275946496656
+0,Asia,Instagram,Low Ticket,0.027758359909057617,False,False,False,11,assinatura,14.27884394965735
+0,Asia,Facebook,Low Ticket,0.006605505943297896,False,False,False,18,assinatura,14.174548215512845
+0,Asia,LinkedIn,Low Ticket,0.04949998855590798,False,False,False,16,assinatura,14.386842477193087
+0,South America,Instagram,Low Ticket,0.035249590873717596,False,False,False,16,assinatura,14.315963746712049
+0,South America,Facebook,Low Ticket,0.010135054588317427,False,False,False,21,assinatura,14.191897817444904
+0,South America,LinkedIn,Low Ticket,0.05551886558532715,False,False,False,13,assinatura,14.416884520558195
+1,North America,Instagram,Low Ticket,0.09571862220764182,False,False,False,15,assinatura,73.09574391350668
+1,North America,Facebook,Low Ticket,0.0805855989456179,False,False,False,15,assinatura,72.71338177694096
+1,North America,LinkedIn,Low Ticket,0.1313072443008425,False,False,False,17,assinatura,74.00289535037933
+1,Europe,Instagram,Low Ticket,0.07957208156585804,False,False,False,15,assinatura,72.68784507916956
+1,Europe,Facebook,Low Ticket,0.03236365318298429,False,False,False,23,assinatura,71.50826112148361
+1,Europe,LinkedIn,Low Ticket,0.10352039337158292,False,False,False,14,assinatura,73.29365404966569
+1,Asia,Instagram,Low Ticket,0.027144074440001997,False,False,False,10,assinatura,71.37902188510563
+1,Asia,Facebook,Low Ticket,0.006218433380126509,False,False,False,9,assinatura,70.86323419883958
+1,Asia,LinkedIn,Low Ticket,0.04972994327545144,False,False,False,18,assinatura,71.9399455001495
+1,South America,Instagram,Low Ticket,0.03475439548492365,False,False,False,16,assinatura,71.56753514150269
+1,South America,Facebook,Low Ticket,0.009938240051270197,False,False,False,23,assinatura,70.95464905440464
+1,South America,LinkedIn,Low Ticket,0.055300951004028986,False,False,False,13,assinatura,72.07897874488307
+2,North America,Instagram,Low Ticket,0.09490156173706077,False,False,False,20,assinatura,33.02802191956502
+2,North America,Facebook,Low Ticket,0.07922148704528809,False,False,False,20,assinatura,32.79160693978441
+2,North America,LinkedIn,Low Ticket,0.1302281618118284,False,False,False,21,assinatura,33.56692034043312
+2,Europe,Instagram,Low Ticket,0.07989478111267134,False,False,False,24,assinatura,32.80172361411947
+2,Europe,Facebook,Low Ticket,0.03153336048126176,False,False,False,22,assinatura,32.08294249552696
+2,Europe,LinkedIn,Low Ticket,0.10286128520965554,False,False,False,20,assinatura,33.14868543007429
+2,Asia,Instagram,Low Ticket,0.027192711830138938,False,False,False,20,assinatura,32.01920421153736
+2,Asia,Facebook,Low Ticket,0.005441546440124068,False,False,False,18,assinatura,31.70171114538677
+2,Asia,LinkedIn,Low Ticket,0.04930019378662065,False,False,False,17,assinatura,32.3451567221988
+2,South America,Instagram,Low Ticket,0.0344731807708738,False,False,False,19,assinatura,32.12618300225744
+2,South America,Facebook,Low Ticket,0.009026408195495161,False,False,False,17,assinatura,31.753820429147318
+2,South America,LinkedIn,Low Ticket,0.05437278747558594,False,False,False,13,assinatura,32.42041380499016
+3,North America,Instagram,Low Ticket,0.09543907642364591,False,False,False,21,assinatura,73.08866250799288
+3,North America,Facebook,Low Ticket,0.0803719758987429,False,False,False,16,assinatura,72.70799856055534
+3,North America,LinkedIn,Low Ticket,0.13034367561340332,False,False,False,18,assinatura,73.97818639745805
+3,Europe,Instagram,Low Ticket,0.0791580677032484,False,False,False,19,assinatura,72.67741611957153
+3,Europe,Facebook,Low Ticket,0.03192162513733021,False,False,False,23,assinatura,71.49730723483691
+3,Europe,LinkedIn,Low Ticket,0.10247957706451505,False,False,False,14,assinatura,73.2672203713591
+3,Asia,Instagram,Low Ticket,0.026647925376891646,False,False,False,21,assinatura,71.36674916315353
+3,Asia,Facebook,Low Ticket,0.005245923995971902,False,False,False,15,assinatura,70.83935404890843
+3,Asia,LinkedIn,Low Ticket,0.04953813552856512,False,False,False,17,assinatura,71.93516341528718
+3,South America,Instagram,Low Ticket,0.03415346145629994,False,False,False,19,assinatura,71.55263147587097
+3,South America,Facebook,Low Ticket,0.008969664573668767,False,False,False,18,assinatura,70.93083480483902
+3,South America,LinkedIn,Low Ticket,0.05430352687835649,False,False,False,14,assinatura,72.0540667275553
+4,North America,Instagram,Low Ticket,0.09133946895599387,False,False,False,10,assinatura,32.97416558863644
+4,North America,Facebook,Low Ticket,0.07598900794982888,False,False,False,17,assinatura,32.74308030453052
+4,North America,LinkedIn,Low Ticket,0.11948585510253928,False,False,False,16,assinatura,33.4021253202603
+4,Europe,Instagram,Low Ticket,0.07501637935638383,False,False,False,16,assinatura,32.72849306528637
+4,Europe,Facebook,Low Ticket,0.026003956794738547,False,False,False,17,assinatura,32.0017705767538
+4,Europe,LinkedIn,Low Ticket,0.09144020080566384,False,False,False,24,assinatura,32.97568737589183
+4,Asia,Instagram,Low Ticket,0.022575736045837624,False,False,False,17,assinatura,31.951547296714992
+4,Asia,Facebook,Low Ticket,-0.006325066089630127,False,False,False,16,assinatura,31.531272772475315
+4,Asia,LinkedIn,Low Ticket,0.04711532592773393,False,False,False,11,assinatura,32.31279583718223
+4,South America,Instagram,Low Ticket,0.02741229534149192,False,False,False,8,assinatura,32.02242554291681
+4,South America,Facebook,Low Ticket,-0.006329059600829745,False,False,False,21,assinatura,31.531215082638685
+4,South America,LinkedIn,Low Ticket,0.042962670326233354,False,False,False,17,assinatura,32.25137854176532
+5,North America,Instagram,Low Ticket,0.09187459945678578,False,False,False,19,assinatura,72.99842791440504
+5,North America,Facebook,Low Ticket,0.07695448398590021,False,False,False,22,assinatura,72.62193328088357
+5,North America,LinkedIn,Low Ticket,0.11994051933288685,False,False,False,18,assinatura,73.71194131935971
+5,Europe,Instagram,Low Ticket,0.07427179813385099,False,False,False,16,assinatura,72.55444455738605
+5,Europe,Facebook,Low Ticket,0.02665555477142334,False,False,False,16,assinatura,71.36693786755406
+5,Europe,LinkedIn,Low Ticket,0.0913302898406978,False,False,False,11,assinatura,72.98465854609452
+5,Asia,Instagram,Low Ticket,0.022045135498045765,False,False,False,18,assinatura,71.25299529305327
+5,Asia,Facebook,Low Ticket,-0.006506800651549072,False,False,False,12,assinatura,70.55139917179235
+5,Asia,LinkedIn,Low Ticket,0.04735064506530717,False,False,False,12,assinatura,71.88064813446785
+5,South America,Instagram,Low Ticket,0.027113556861877663,False,False,False,9,assinatura,71.37826694269037
+5,South America,Facebook,Low Ticket,-0.006197690963745339,False,False,False,24,assinatura,70.55895769543719
+5,South America,LinkedIn,Low Ticket,0.04330623149871893,False,False,False,16,assinatura,71.77996454935004
+6,North America,Instagram,High Ticket,0.31102693080902055,False,False,False,14,assinatura,787.5882349359568
+6,North America,Facebook,High Ticket,0.19255363941192583,False,False,False,13,assinatura,755.9049908738161
+6,North America,LinkedIn,High Ticket,0.5483673810958867,False,False,False,21,assinatura,855.1110476205403
+6,Europe,Instagram,High Ticket,0.06010055541992276,False,False,False,18,assinatura,721.9897585597048
+6,Europe,Facebook,High Ticket,-0.116000175476075,False,False,False,15,assinatura,679.2431009660482
+6,Europe,LinkedIn,High Ticket,0.3641655445098888,False,False,False,21,assinatura,802.2271914977284
+6,Asia,Instagram,High Ticket,-0.19799149036407582,False,False,False,17,assinatura,660.2133676158446
+6,Asia,Facebook,High Ticket,-0.30560660362243663,False,False,False,12,assinatura,636.0432160981328
+6,Asia,LinkedIn,High Ticket,0.10026586055755504,False,False,False,15,assinatura,732.110301689885
+6,South America,Instagram,High Ticket,-0.16467207670211925,False,False,False,13,assinatura,667.8814554322543
+6,South America,Facebook,High Ticket,-0.3397943973541261,False,False,False,21,assinatura,628.5514740101125
+6,South America,LinkedIn,High Ticket,0.1679205894470206,False,False,False,20,assinatura,749.4791737275622
+7,North America,Instagram,High Ticket,0.34606409072875866,False,False,False,16,assinatura,1594.4203681984582
+7,North America,Facebook,High Ticket,0.27324366569518954,False,False,False,13,assinatura,1554.6844959056493
+7,North America,LinkedIn,High Ticket,0.637159824371337,False,False,False,30,assinatura,1763.6691057146243
+7,Europe,Instagram,High Ticket,0.11136317253112882,False,False,False,20,assinatura,1469.8628907016628
+7,Europe,Facebook,High Ticket,-0.027789056301117276,False,False,False,12,assinatura,1400.6587158224122
+7,Europe,LinkedIn,High Ticket,0.4111962318420408,False,False,False,20,assinatura,1630.8206341473438
+7,Asia,Instagram,High Ticket,-0.16341936588287442,False,False,False,16,assinatura,1336.3429669047316
+7,Asia,Facebook,High Ticket,-0.2986426949501042,False,False,False,14,assinatura,1275.1603294337983
+7,Asia,LinkedIn,High Ticket,0.1051549911499019,False,False,False,29,assinatura,1466.7037457044282
+7,South America,Instagram,High Ticket,-0.11913722753524758,False,False,False,18,assinatura,1357.0100319911617
+7,South America,Facebook,High Ticket,-0.300035238265992,False,False,False,14,assinatura,1274.545061648458
+7,South America,LinkedIn,High Ticket,0.19725441932678245,False,False,False,11,assinatura,1514.2749788284186
+8,North America,Instagram,High Ticket,0.35748863220214977,False,False,False,25,assinatura,3725.0277695467803
+8,North America,Facebook,High Ticket,0.34562861919403254,False,False,False,20,assinatura,3704.8423110270596
+8,North America,LinkedIn,High Ticket,0.7110531330108638,False,False,False,31,assinatura,4380.041697503426
+8,Europe,Instagram,High Ticket,0.20696949958801114,False,False,False,17,assinatura,3476.808111743914
+8,Europe,Facebook,High Ticket,0.1597779989242536,False,False,False,22,assinatura,3402.4443380710536
+8,Europe,LinkedIn,High Ticket,0.43668830394744895,False,False,False,23,assinatura,3862.67237596444
+8,Asia,Instagram,High Ticket,-0.04904204607009999,False,False,False,14,assinatura,3092.018643668329
+8,Asia,Facebook,High Ticket,-0.14213502407073975,False,False,False,16,assinatura,2962.9163713651556
+8,Asia,LinkedIn,High Ticket,0.09286355972289995,False,False,False,15,assinatura,3299.7198008973464
+8,South America,Instagram,High Ticket,0.046635389328003596,False,False,False,15,assinatura,3230.5691657138746
+8,South America,Facebook,High Ticket,-0.11346161365509222,False,False,False,13,assinatura,3002.0957676628673
+8,South America,LinkedIn,High Ticket,0.19263744354248136,False,False,False,28,assinatura,3454.053602480612
+9,North America,Instagram,High Ticket,0.42719721794128485,False,False,False,23,assinatura,3845.912793213492
+9,North America,Facebook,High Ticket,0.2773637771606432,False,False,False,15,assinatura,3590.765732374809
+9,North America,LinkedIn,High Ticket,0.6758804321289047,False,False,False,20,assinatura,4310.026421625603
+9,Europe,Instagram,High Ticket,0.1883218288421622,False,False,False,19,assinatura,3447.231067569326
+9,Europe,Facebook,High Ticket,0.1312879323959335,False,False,False,21,assinatura,3358.3222010243385
+9,Europe,LinkedIn,High Ticket,0.48995852470397794,False,False,False,25,assinatura,3958.1026200446126
+9,Asia,Instagram,High Ticket,0.03464078903198331,False,False,False,22,assinatura,3212.865003277644
+9,Asia,Facebook,High Ticket,-0.23044019937515348,False,False,False,14,assinatura,2845.4392149833184
+9,Asia,LinkedIn,High Ticket,0.2663414478302002,False,False,False,15,assinatura,3572.678685755095
+9,South America,Instagram,High Ticket,-0.04493463039398371,False,False,False,15,assinatura,3097.842662205316
+9,South America,Facebook,High Ticket,-0.3301819562911982,False,False,False,24,assinatura,2718.3394928153575
+9,South America,LinkedIn,High Ticket,0.17325866222381614,False,False,False,16,assinatura,3423.5232118343724
+10,North America,Instagram,High Ticket,0.38788414001464866,False,False,False,26,assinatura,8088.488691831937
+10,North America,Facebook,High Ticket,0.23643612861633234,False,False,False,17,assinatura,7674.890457097561
+10,North America,LinkedIn,High Ticket,0.4764341115951527,False,False,False,14,assinatura,8340.56519535343
+10,Europe,Instagram,High Ticket,0.1368807554244995,False,False,False,16,assinatura,7414.597984219855
+10,Europe,Facebook,High Ticket,-0.027001857757565917,False,False,False,16,assinatura,7005.204493910325
+10,Europe,LinkedIn,High Ticket,0.5272551774978618,False,False,False,18,assinatura,8488.770925875568
+10,Asia,Instagram,High Ticket,-0.07905244827270252,False,False,False,27,assinatura,6879.968076533704
+10,Asia,Facebook,High Ticket,-0.31427454948425304,False,False,False,14,assinatura,6341.353577979598
+10,Asia,LinkedIn,High Ticket,0.04741179943084495,False,False,False,18,assinatura,7188.2171624148805
+10,South America,Instagram,High Ticket,-0.06711435317993342,False,False,False,10,assinatura,6908.492420402789
+10,South America,Facebook,High Ticket,-0.35102748870849465,False,False,False,18,assinatura,6261.092218336028
+10,South America,LinkedIn,High Ticket,0.34324550628661954,False,False,False,21,assinatura,7964.318120157166
+11,North America,Instagram,High Ticket,0.43274390697479403,False,False,False,17,assinatura,19278.492080842025
+11,North America,Facebook,High Ticket,0.40457034111022816,False,False,False,19,assinatura,19031.252302708817
+11,North America,LinkedIn,High Ticket,0.8106985092163099,False,False,False,25,assinatura,22923.170794571273
+11,Europe,Instagram,High Ticket,0.11437690258025923,False,False,False,20,assinatura,16662.017149635394
+11,Europe,Facebook,High Ticket,0.12336623668670454,False,False,False,15,assinatura,16730.77986342795
+11,Europe,LinkedIn,High Ticket,0.37035977840423673,False,False,False,22,assinatura,18735.29307185244
+11,Asia,Instagram,High Ticket,0.17768263816833585,False,False,False,22,assinatura,17152.345639043742
+11,Asia,Facebook,High Ticket,-0.08152657747268732,False,False,False,16,assinatura,15231.709943019392
+11,Asia,LinkedIn,High Ticket,0.29565882682800115,False,False,False,15,assinatura,18104.946357194294
+11,South America,Instagram,High Ticket,0.018244743347167747,False,False,False,12,assinatura,15944.105559799256
+11,South America,Facebook,High Ticket,-0.1923570632934568,False,False,False,13,assinatura,14477.604841514487
+11,South America,LinkedIn,High Ticket,0.31239581108093417,False,False,False,16,assinatura,18244.30820335829

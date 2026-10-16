@@ -53,6 +53,16 @@ def ajustar_fqe(agente, teste, passos):
     return fqe, media_por_chave
 
 
+def estimar(agente, fqe, media_por_chave, estados):
+    """Lucro estimado pelo FQE para a ação da política em cada estado (US$)."""
+    sem_cenario = estados.drop(columns='Cenario', errors='ignore')
+    precos = agente.precos(sem_cenario)
+    obs = agente.prep.transform(sem_cenario)
+    acoes = agente.preco_para_acao(precos, sem_cenario).reshape(-1, 1).astype(np.float32)
+    escala = np.array([media_por_chave[str(k)] for k in pol.chaves(agente.modelo, sem_cenario)])
+    return (fqe.predict_value(obs, acoes) + 1) * escala, precos
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--passos', type=int, default=10000)
@@ -69,12 +79,7 @@ def main():
         for classe, prefixo in [(pol.CQL, f'cql_{modelo}'), (pol.BC, f'bc_{modelo}')]:
             agente = classe.carregar(prefixo)
             fqe, media_por_chave = ajustar_fqe(agente, teste, args.passos)
-            sem_cenario = estados.drop(columns='Cenario')
-            precos = agente.precos(sem_cenario)
-            obs = agente.prep.transform(sem_cenario)
-            acoes = agente.preco_para_acao(precos, sem_cenario).reshape(-1, 1).astype(np.float32)
-            escala = np.array([media_por_chave[str(k)] for k in pol.chaves(modelo, sem_cenario)])
-            estimado = (fqe.predict_value(obs, acoes) + 1) * escala
+            estimado, precos = estimar(agente, fqe, media_por_chave, estados)
             verdadeiro = av.lucros(precos, estados, cenarios, modelo)
             pct_est, pct_ver = 100 * np.mean(estimado / otimo), 100 * np.mean(verdadeiro / otimo)
             linhas.append({

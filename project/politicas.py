@@ -29,6 +29,10 @@ MEMORIA = ['dias_desde_ultima_interacao', 'clv_estimate_percentile',
            'avg_price_offered_segment_90d', 'price_volatility_30d']
 ALVO = {'venda_unica': 'Lucro_Real', 'assinatura': 'LTV_Real'}
 FRACAO_TREINO = 0.8  # mesmo split 80/20 dos notebooks (dados embaralhados)
+# Quantis da regressão quantílica do SL e do bandido: até 5% para VaR/CVaR 5%,
+# mediana e 90% para a faixa de incerteza
+QUANTIS_RISCO = (0.01, 0.025, 0.05, 0.10, 0.50, 0.90)
+PARAMETROS_QUANTIS = {'n_estimators': 200, 'learning_rate': 0.05, 'num_leaves': 31, 'min_child_samples': 50}
 COLUNAS_ESTADO = CATEGORICAS + ['Orcamento'] + MEMORIA
 
 
@@ -199,6 +203,48 @@ class RegressorGrade(Politica):
         pred = self.lgb.predict(self._X(estados, precos))
         return np.exp(pred) if self.escala_log else pred
 
+    # --- Incerteza: regressão quantílica (opcional, treinar_quantis.py) -------
+    def treinar_quantis(self, dados, semente, quantis=QUANTIS_RISCO, fracao_treino=FRACAO_TREINO):
+        """Um LightGBM com objective='quantile' por quantil, nas mesmas features e
+        na mesma escala do alvo (log no bandido; os quantis passam pela exp sem
+        mudar de ordem). Dá a este método um VaR/CVaR próprio, comparável ao do
+        crítico quantílico do CQL."""
+        import lightgbm as lgb
+        treino = dados.iloc[: int(len(dados) * fracao_treino)]
+        X = self._X(treino, treino['Preco_Amostra'].to_numpy())
+        alvo = treino[ALVO[self.modelo]].to_numpy(dtype=float)
+        if self.escala_log:
+            alvo = np.log(np.maximum(alvo, 1e-6))
+        self.quantis = tuple(sorted(quantis))
+        self.lgb_quantis = [lgb.LGBMRegressor(objective='quantile', alpha=q, **PARAMETROS_QUANTIS,
+                                              random_state=semente, verbose=-1).fit(X, alvo)
+                            for q in self.quantis]
+        return self
+
+    @property
+    def tem_quantis(self):
+        return bool(getattr(self, 'lgb_quantis', None))
+
+    def prever_quantis(self, estados, precos):
+        """(n, k) quantis do lucro em US$, em ordem crescente (sem cruzamento)."""
+        X = self._X(estados, precos)
+        pred = np.sort(np.column_stack([m.predict(X) for m in self.lgb_quantis]), axis=1)
+        return np.exp(pred) if self.escala_log else pred
+
+    def risco(self, estados, precos, alfa=0.05):
+        """VaR e CVaR de nível alfa por par (estado, preço), a partir dos quantis.
+
+        VaR = quantil alfa (interpolado). CVaR = (1/alfa) * integral de q(τ) em [0, alfa],
+        pela regra do trapézio nos quantis até alfa, com q(τ) = q(menor quantil) abaixo dele."""
+        qs = np.asarray(self.quantis)
+        if alfa not in qs or qs[0] >= alfa:
+            raise ValueError(f'quantis {self.quantis} não cobrem alfa={alfa}')
+        Q = self.prever_quantis(estados, precos)
+        baixo = Q[:, qs <= alfa]
+        taus = qs[qs <= alfa]
+        integral = taus[0] * baixo[:, 0] + np.trapezoid(baixo, taus, axis=1)
+        return baixo[:, -1], integral / alfa
+
     def precos(self, estados):
         return por_estado_unico(self._precos, estados)
 
@@ -368,21 +414,24 @@ class CQL(AgenteD3):
         pol.prep = PreprocessadorEstado(modelo, ohe, scaler_estado, scaler_memoria)
         return pol
 
-    def treinar(self, dados, semente):
-        import d3rlpy
+    def _config(self):
         from d3rlpy.algos import CQLConfig
         from d3rlpy.models import QRQFunctionFactory
+        return CQLConfig(
+            batch_size=256, gamma=self.gamma,
+            observation_scaler=None, action_scaler=None, reward_scaler=None,
+            alpha_learning_rate=1e-4, actor_learning_rate=1e-4, critic_learning_rate=3e-4,
+            conservative_weight=self.peso_conservador, q_func_factory=QRQFunctionFactory(n_quantiles=64),
+        )
+
+    def treinar(self, dados, semente):
+        import d3rlpy
 
         d3rlpy.seed(semente)
         treino = dados.iloc[: int(len(dados) * FRACAO_TREINO)]
         buffer = self._buffer(treino, self._recompensas(treino))
 
-        self.algo = CQLConfig(
-            batch_size=256, gamma=self.gamma,
-            observation_scaler=None, action_scaler=None, reward_scaler=None,
-            alpha_learning_rate=1e-4, actor_learning_rate=1e-4, critic_learning_rate=3e-4,
-            conservative_weight=self.peso_conservador, q_func_factory=QRQFunctionFactory(n_quantiles=64),
-        ).create(device='cuda:0' if _cuda() else 'cpu')
+        self.algo = self._config().create(device='cuda:0' if _cuda() else 'cpu')
 
         melhor, sem_melhora = -np.inf, 0
         with tempfile.TemporaryDirectory() as tmp:
@@ -438,6 +487,40 @@ class CQL(AgenteD3):
         if self.escala_recompensa == 'log':
             return np.exp(q * desvio + media)
         raise NotImplementedError("escala_recompensa='estado' não tem conversão única para US$")
+
+    def risco(self, estados, precos, alfa=0.05):
+        """VaR e CVaR de nível alfa por par (estado, preço), dos quantis do crítico em US$
+        (mesma interface de RegressorGrade.risco)."""
+        q = np.sort(self.quantis_reais(estados, precos), axis=1)
+        var = np.quantile(q, alfa, axis=1)
+        cvar = np.array([linha[linha <= v].mean() for linha, v in zip(q, var)])
+        return var, cvar
+
+
+class IQL(CQL):
+    """Implicit Q-Learning (d3rlpy), alternativa ao CQL como RL offline.
+
+    Em vez de penalizar ações fora dos dados (termo conservador do CQL), o IQL nunca
+    consulta Q em ações não logadas: aprende V(s) como um expectil alto de Q(s, a)
+    sobre as ações dos dados e extrai a política por regressão ponderada pela
+    vantagem. Mesmo estado, ação, recompensa, γ e seleção de checkpoint do CQL;
+    hiperparâmetros do artigo original (expectil 0,7, temperatura 3). Sem crítico
+    quantílico: não tem quantis_reais/risco.
+    """
+    nome = 'iql'
+
+    def __init__(self, modelo, cenarios, expectil=0.7, temperatura=3.0, **kw):
+        super().__init__(modelo, cenarios, **kw)
+        self.expectil, self.temperatura = expectil, temperatura
+
+    def _config(self):
+        from d3rlpy.algos import IQLConfig
+        return IQLConfig(batch_size=256, gamma=self.gamma, observation_scaler=None, action_scaler=None,
+                         reward_scaler=None, actor_learning_rate=3e-4, critic_learning_rate=3e-4,
+                         expectile=self.expectil, weight_temp=self.temperatura, max_weight=100.0)
+
+    def quantis(self, estados, precos):
+        raise NotImplementedError('IQL não tem crítico quantílico')
 
 
 class BC(AgenteD3):
