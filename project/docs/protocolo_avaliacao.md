@@ -759,6 +759,39 @@ dentro da margem de −1 p.p.).
   20.000 passos; a diferença é do treino mais curto, não do número de contextos (é a
   mesma nos dois conjuntos).
 
+### 9h.2 Resultado: sensibilidade de κ e λ (3 sementes, CQL 20.000 passos, `resultados/sensibilidade/kappa_lambda/`)
+
+Uma variável por vez em torno de κ = 0,15, λ = 0,85. % do ótimo da PD, total
+(bandido / CQL γ = 0 / CQL γ = 0,95), e S1 = `cql_g095 − bandido`,
+S2 = `cql_g095 − cql_g0` em p.p. com IC 95%:
+
+| κ | λ | venda única | S1 | S2 | assinatura | S1 | S2 |
+|---|---|---|---|---|---|---|---|
+| 0,105 | 0,85 | 79,5 / 80,9 / 84,6 | +5,0 (2,8 a 7,3) | +3,7 (1,2 a 6,1) | 91,2 / 93,0 / 97,5 | +6,3 (5,1 a 7,4) | +4,5 (3,7 a 5,3) |
+| 0,15 | 0,85 | 75,4 / 78,1 / 84,2 | +8,8 | +6,1 | 84,4 / 86,7 / 98,3 | +13,9 | +11,6 |
+| 0,195 | 0,85 | 70,2 / 74,1 / 82,3 | +12,0 (9,8 a 14,3) | +8,2 (6,1 a 10,4) | 78,1 / 80,3 / 93,1 | +15,0 (12,5 a 17,6) | +12,9 (11,0 a 14,8) |
+| 0,15 | 0,75 | 71,9 / 75,9 / 80,2 | +8,3 (7,5 a 9,1) | +4,4 (3,0 a 5,7) | 79,2 / 81,5 / 93,2 | +14,0 (13,2 a 14,8) | +11,7 (11,0 a 12,4) |
+| 0,15 | 0,95 | 77,9 / 79,5 / 84,8 | +6,9 (5,0 a 8,7) | +5,2 (3,6 a 6,9) | 87,9 / 90,2 / 96,4 | +8,5 (7,0 a 10,1) | +6,2 (4,8 a 7,6) |
+
+A linha κ = 0,15, λ = 0,85 é a rodada principal (10 sementes, 50.000 passos), só
+como referência. Por tier (`robustez_s1_s2.csv`): 47 de 48 combinações
+(4 configurações × 2 cobranças × 3 recortes × S1/S2) têm IC 95% acima de zero.
+
+- **S1 e S2 continuam satisfeitos nas quatro configurações**, no total e nos dois
+  tiers. A única exceção é S2 na venda única, Low Ticket, com κ = 0,105: +4,8 p.p.
+  (−0,4 a 9,9), inconclusivo com 3 sementes.
+- **O tamanho da vantagem acompanha a força do efeito intertemporal.** Ela cresce
+  com κ (o preço move mais a reputação) e diminui com λ (com λ = 0,95 a reputação
+  quase não muda de um período para o outro). Com efeito mais fraco, o bandido e o
+  RL míope perdem menos, e o ganho de planejar cai, por exemplo, de +13,9 para
+  +6,3 p.p. na assinatura com κ = 0,105. Com efeito mais forte, ele sobe.
+- A conclusão qualitativa (planejar supera o bandido e o RL míope) não depende do
+  valor exato de κ e λ dentro de ±30%. O tamanho do ganho depende, e por isso os
+  números absolutos do sequencial só valem para a calibração escolhida (seção 9f).
+- Na venda única o oráculo míope (que conhece a demanda do período) continua acima
+  do CQL γ = 0,95 em todas as configurações (83–95% contra 80–85%), como na rodada
+  principal. Na assinatura o CQL γ = 0,95 supera o oráculo míope em todas.
+
 ## 10. Custo e explicabilidade
 
 `resultados/custo_explicabilidade.csv`: tempo de treino (média por semente),

@@ -31,7 +31,9 @@ A vantagem clara do RL (CQL γ = 0,95 sobre o bandido: +8,8 p.p. na venda única
 +13,9 p.p. na assinatura, 10 sementes) aparece só no ambiente sequencial, em que o preço muda a
 reputação e a demanda futura. A intensidade desse efeito (κ = 0,15, λ = 0,85) foi
 calibrada por inspeção, não medida (duas configurações testadas, sem busca
-sistemática; grade de sensibilidade na seção 9f do protocolo). O produto serve a decisão de passo único; a rota experimental
+sistemática; grade de sensibilidade na seção 9f do protocolo). Com κ e λ variando ±30%
+(seção 9h.2), S1 e S2 continuam satisfeitos, mas o tamanho do ganho muda: de +5 a
++12 p.p. na venda única e de +6 a +15 p.p. na assinatura. O produto serve a decisão de passo único; a rota experimental
 `/recomendar_sequencial` serve o agente sequencial com estado persistido por cliente,
 mas a reputação que ela acompanha é a do Gêmeo Digital, não uma medida real
 (`docs/escopo_produto.md`).
